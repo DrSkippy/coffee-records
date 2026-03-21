@@ -1,0 +1,4 @@
+export POSTGRES_USER=your_user
+export POSTGRES_PASSWORD=your_password
+export POSTGRES_HOST=192.168.1.91
+export POSTGRES_DATABASE=coffee-records
