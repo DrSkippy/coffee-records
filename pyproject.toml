@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "coffee-records"
-version = "0.1.0"
+version = "0.2.0"
 description = "Espresso shot tracking application"
 authors = ["Scott"]
 packages = [{ include = "coffee_records" }]

@@ -30,6 +30,18 @@ def _parse_dates() -> tuple[date | None, date | None]:
     return date_from, date_to
 
 
+def _parse_filters() -> tuple[int | None, int | None, int | None]:
+    """Parse coffee_id, grinder_id, device_id query parameters.
+
+    Returns:
+        Tuple of (coffee_id, grinder_id, device_id), any may be None.
+    """
+    coffee_id = int(c) if (c := request.args.get("coffee_id")) else None
+    grinder_id = int(g) if (g := request.args.get("grinder_id")) else None
+    device_id = int(d) if (d := request.args.get("device_id")) else None
+    return coffee_id, grinder_id, device_id
+
+
 @reports_bp.get("/dose-yield")
 def report_dose_yield() -> object:
     """Dose vs yield ratio over time.
@@ -38,8 +50,13 @@ def report_dose_yield() -> object:
         JSON list of dose/yield data points.
     """
     date_from, date_to = _parse_dates()
+    coffee_id, grinder_id, device_id = _parse_filters()
     with get_session() as session:
-        return jsonify(dose_yield_over_time(session, date_from, date_to))
+        return jsonify(
+            dose_yield_over_time(
+                session, date_from, date_to, coffee_id, grinder_id, device_id
+            )
+        )
 
 
 @reports_bp.get("/shots-per-day")
@@ -50,8 +67,13 @@ def report_shots_per_day() -> object:
         JSON list of date/count pairs.
     """
     date_from, date_to = _parse_dates()
+    coffee_id, grinder_id, device_id = _parse_filters()
     with get_session() as session:
-        return jsonify(shots_per_day(session, date_from, date_to))
+        return jsonify(
+            shots_per_day(
+                session, date_from, date_to, coffee_id, grinder_id, device_id
+            )
+        )
 
 
 @reports_bp.get("/extraction-trends")
@@ -62,8 +84,13 @@ def report_extraction_trends() -> object:
         JSON list of extraction time data points.
     """
     date_from, date_to = _parse_dates()
+    coffee_id, grinder_id, device_id = _parse_filters()
     with get_session() as session:
-        return jsonify(extraction_trends(session, date_from, date_to))
+        return jsonify(
+            extraction_trends(
+                session, date_from, date_to, coffee_id, grinder_id, device_id
+            )
+        )
 
 
 @reports_bp.get("/by-coffee/<int:coffee_id>")

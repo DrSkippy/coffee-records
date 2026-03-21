@@ -6,21 +6,24 @@ import type {
 } from "../types";
 import api from "./client";
 
-interface DateRange {
+interface ReportParams {
   date_from?: string;
   date_to?: string;
+  coffee_id?: number;
+  grinder_id?: number;
+  device_id?: number;
 }
 
-export const getDoseYield = (params: DateRange = {}) =>
+export const getDoseYield = (params: ReportParams = {}) =>
   api.get<DoseYieldPoint[]>("/reports/dose-yield", { params }).then((r) => r.data);
 
-export const getShotsPerDay = (params: DateRange = {}) =>
+export const getShotsPerDay = (params: ReportParams = {}) =>
   api.get<ShotsPerDayPoint[]>("/reports/shots-per-day", { params }).then((r) => r.data);
 
-export const getExtractionTrends = (params: DateRange = {}) =>
+export const getExtractionTrends = (params: ReportParams = {}) =>
   api.get<ExtractionPoint[]>("/reports/extraction-trends", { params }).then((r) => r.data);
 
-export const getByCoffee = (coffeeId: number, params: DateRange = {}) =>
+export const getByCoffee = (coffeeId: number, params: ReportParams = {}) =>
   api
     .get<ByCoffeeReport>(`/reports/by-coffee/${coffeeId}`, { params })
     .then((r) => r.data);

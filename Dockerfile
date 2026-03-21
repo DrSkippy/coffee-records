@@ -14,12 +14,17 @@ RUN pip install --no-cache-dir poetry==1.8.3
 
 WORKDIR /app
 
+# Install system dependencies required by psycopg2-binary
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy dependency files first for layer caching
 COPY pyproject.toml poetry.lock* ./
 
 # Install Python dependencies (no dev)
 RUN poetry config virtualenvs.create false \
-    && poetry install --only main --no-interaction --no-ansi
+    && poetry install --only main --no-root --no-interaction --no-ansi
 
 # Copy application code
 COPY coffee_records/ ./coffee_records/

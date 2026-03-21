@@ -10,3 +10,5 @@ node_modules/
 frontend/dist/
 *.log
 .mypy_cache/
+.coverage
+.idea

@@ -6,7 +6,16 @@ import {
   getExtractionTrends,
   getShotsPerDay,
 } from "../api/reports";
-import type { DoseYieldPoint, ExtractionPoint, ShotsPerDayPoint } from "../types";
+import { getCoffees } from "../api/coffees";
+import { getBrewingDevices, getGrinders } from "../api/equipment";
+import type {
+  BrewingDevice,
+  Coffee,
+  DoseYieldPoint,
+  ExtractionPoint,
+  Grinder,
+  ShotsPerDayPoint,
+} from "../types";
 
 const DATE_RANGES = [
   { value: "7", label: "Last 7 days" },
@@ -22,26 +31,90 @@ function daysAgo(n: number): string {
 
 export default function ReportsPage() {
   const [days, setDays] = useState("30");
+  const [coffeeId, setCoffeeId] = useState<string | null>(null);
+  const [grinderId, setGrinderId] = useState<string | null>(null);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+
+  const [coffees, setCoffees] = useState<Coffee[]>([]);
+  const [grinders, setGrinders] = useState<Grinder[]>([]);
+  const [devices, setDevices] = useState<BrewingDevice[]>([]);
+
   const [doseYield, setDoseYield] = useState<DoseYieldPoint[]>([]);
   const [perDay, setPerDay] = useState<ShotsPerDayPoint[]>([]);
   const [extraction, setExtraction] = useState<ExtractionPoint[]>([]);
 
+  // Load filter options once
   useEffect(() => {
-    const params = { date_from: daysAgo(Number(days)), date_to: new Date().toISOString().slice(0, 10) };
+    getCoffees().then(setCoffees);
+    getGrinders().then(setGrinders);
+    getBrewingDevices().then(setDevices);
+  }, []);
+
+  // Reload charts whenever any filter changes
+  useEffect(() => {
+    const params = {
+      date_from: daysAgo(Number(days)),
+      date_to: new Date().toISOString().slice(0, 10),
+      ...(coffeeId ? { coffee_id: Number(coffeeId) } : {}),
+      ...(grinderId ? { grinder_id: Number(grinderId) } : {}),
+      ...(deviceId ? { device_id: Number(deviceId) } : {}),
+    };
     getDoseYield(params).then(setDoseYield);
     getShotsPerDay(params).then(setPerDay);
     getExtractionTrends(params).then(setExtraction);
-  }, [days]);
+  }, [days, coffeeId, grinderId, deviceId]);
+
+  const coffeeOptions = coffees.map((c) => ({
+    value: String(c.id),
+    label: `${c.roaster} — ${c.name}`,
+  }));
+  const grinderOptions = grinders.map((g) => ({
+    value: String(g.id),
+    label: `${g.make} ${g.model}`,
+  }));
+  const deviceOptions = devices.map((d) => ({
+    value: String(d.id),
+    label: `${d.make} ${d.model}`,
+  }));
 
   return (
     <Stack>
-      <Group justify="space-between">
-        <Title order={2}>Reports</Title>
+      <Title order={2}>Reports</Title>
+
+      <Group align="flex-end" wrap="wrap">
         <Select
+          label="Date range"
           data={DATE_RANGES}
           value={days}
           onChange={(v) => setDays(v ?? "30")}
           w={160}
+        />
+        <Select
+          label="Coffee"
+          data={coffeeOptions}
+          value={coffeeId}
+          onChange={setCoffeeId}
+          placeholder="All coffees"
+          clearable
+          w={220}
+        />
+        <Select
+          label="Grinder"
+          data={grinderOptions}
+          value={grinderId}
+          onChange={setGrinderId}
+          placeholder="All grinders"
+          clearable
+          w={200}
+        />
+        <Select
+          label="Equipment"
+          data={deviceOptions}
+          value={deviceId}
+          onChange={setDeviceId}
+          placeholder="All devices"
+          clearable
+          w={200}
         />
       </Group>
 
@@ -55,7 +128,7 @@ export default function ReportsPage() {
               h={200}
               data={perDay}
               dataKey="date"
-              series={[{ name: "count", color: "blue.6", label: "Shots" }]}
+              series={[{ name: "count", color: "coffee.9", label: "Shots" }]}
             />
           )}
         </Stack>
@@ -69,7 +142,7 @@ export default function ReportsPage() {
               h={200}
               data={extraction}
               dataKey="date"
-              series={[{ name: "extraction_time", color: "orange.6", label: "Seconds" }]}
+              series={[{ name: "extraction_time", color: "coffee.6", label: "Seconds" }]}
               curveType="monotone"
             />
           )}
@@ -84,7 +157,7 @@ export default function ReportsPage() {
               h={200}
               data={doseYield}
               dataKey="date"
-              series={[{ name: "ratio", color: "green.6", label: "Ratio" }]}
+              series={[{ name: "ratio", color: "coffee.5", label: "Ratio" }]}
               curveType="monotone"
             />
           )}
@@ -100,8 +173,8 @@ export default function ReportsPage() {
               data={doseYield}
               dataKey="date"
               series={[
-                { name: "dose_weight", color: "violet.6", label: "Dose (g)" },
-                { name: "final_weight", color: "teal.6", label: "Yield (g)" },
+                { name: "dose_weight", color: "coffee.7", label: "Dose (g)" },
+                { name: "final_weight", color: "coffee.9", label: "Yield (g)" },
               ]}
               curveType="monotone"
             />

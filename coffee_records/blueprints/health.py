@@ -1,5 +1,7 @@
 """Health check blueprint."""
 
+from importlib.metadata import version as pkg_version
+
 from flask import Blueprint, jsonify
 from sqlalchemy import text
 
@@ -23,3 +25,13 @@ def health() -> object:
         db_status = "error"
 
     return jsonify({"status": "ok", "database": db_status})
+
+
+@health_bp.get("/api/version")
+def api_version() -> object:
+    """Return the API version.
+
+    Returns:
+        JSON with the current API version string.
+    """
+    return jsonify({"version": pkg_version("coffee-records")})
