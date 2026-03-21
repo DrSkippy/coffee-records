@@ -146,7 +146,8 @@ def test_delete_shot(client: FlaskClient) -> None:
     assert client.get(f"/api/shots/{shot['id']}").status_code == 404
 
 
-def test_invalid_maker(client: FlaskClient) -> None:
-    """Invalid maker value returns 422."""
+def test_freetext_maker(client: FlaskClient) -> None:
+    """Maker accepts any non-empty string, not just the legacy enum values."""
     resp = client.post("/api/shots", json={"date": "2026-03-20", "maker": "Bob"})
-    assert resp.status_code == 422
+    assert resp.status_code == 201
+    assert resp.get_json()["maker"] == "Bob"

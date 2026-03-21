@@ -44,6 +44,13 @@ class ServerConfig(BaseModel):
     workers: int = 4
 
 
+class UploadsConfig(BaseModel):
+    """File upload settings."""
+
+    coffee_image_dir: str = "/var/www/html/resources/coffee"
+    coffee_image_base_url: str = "https://resources.drskippy.app/coffee"
+
+
 class Config(BaseModel):
     """Root configuration object."""
 
@@ -51,6 +58,7 @@ class Config(BaseModel):
     database: DatabaseConfig = DatabaseConfig()
     logging: LoggingConfig = LoggingConfig()
     server: ServerConfig = ServerConfig()
+    uploads: UploadsConfig = UploadsConfig()
 
 
 def load_config(path: Path | None = None) -> Config:

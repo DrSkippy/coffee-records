@@ -30,6 +30,7 @@ def create_app(
     app = Flask(__name__, static_folder="static", static_url_path="/static")
     app.config["SECRET_KEY"] = config.app.secret_key
     app.config["DEBUG"] = config.app.debug
+    app.config["APP_CONFIG"] = config
 
     # Initialize database
     url = database_url if database_url is not None else config.database.get_url()

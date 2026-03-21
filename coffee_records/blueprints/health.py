@@ -1,6 +1,8 @@
 """Health check blueprint."""
 
-from importlib.metadata import version as pkg_version
+import tomllib
+from functools import lru_cache
+from pathlib import Path
 
 from flask import Blueprint, jsonify
 from sqlalchemy import text
@@ -8,6 +10,19 @@ from sqlalchemy import text
 from coffee_records.database import get_session
 
 health_bp = Blueprint("health", __name__)
+
+
+@lru_cache(maxsize=1)
+def _read_version() -> str:
+    """Read the package version from pyproject.toml.
+
+    Returns:
+        Version string from [tool.poetry] section.
+    """
+    pyproject = Path(__file__).parent.parent.parent / "pyproject.toml"
+    with open(pyproject, "rb") as f:
+        data = tomllib.load(f)
+    return str(data["tool"]["poetry"]["version"])
 
 
 @health_bp.get("/health")
@@ -34,4 +49,4 @@ def api_version() -> object:
     Returns:
         JSON with the current API version string.
     """
-    return jsonify({"version": pkg_version("coffee-records")})
+    return jsonify({"version": _read_version()})

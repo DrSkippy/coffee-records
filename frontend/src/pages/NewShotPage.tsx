@@ -1,6 +1,8 @@
 import {
+  Autocomplete,
   Button,
   Checkbox,
+  FileInput,
   Grid,
   Group,
   NumberInput,
@@ -10,6 +12,7 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
+import { IconVideo } from "@tabler/icons-react";
 import { DateInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
@@ -18,7 +21,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCoffees } from "../api/coffees";
 import { getBrewingDevices, getGrinders, getScales } from "../api/equipment";
-import { createShot } from "../api/shots";
+import { createShot, uploadShotVideo } from "../api/shots";
 import type { BrewingDevice, Coffee, Grinder, Scale } from "../types";
 
 interface FormValues {
@@ -49,6 +52,7 @@ export default function NewShotPage() {
   const [devices, setDevices] = useState<BrewingDevice[]>([]);
   const [scales, setScales] = useState<Scale[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
 
   useEffect(() => {
     Promise.all([getCoffees(), getGrinders(), getBrewingDevices(), getScales()]).then(
@@ -89,7 +93,7 @@ export default function NewShotPage() {
     try {
       const payload = {
         date: dayjs(values.date).format("YYYY-MM-DD"),
-        maker: values.maker as "Scott" | "Sara",
+        maker: values.maker,
         coffee_id: values.coffee_id ? Number(values.coffee_id) : null,
         dose_weight: values.dose_weight !== "" ? Number(values.dose_weight) : null,
         pre_infusion_time: values.pre_infusion_time || null,
@@ -109,7 +113,10 @@ export default function NewShotPage() {
         grinder_id: values.grinder_id ? Number(values.grinder_id) : null,
         device_id: values.device_id ? Number(values.device_id) : null,
       };
-      await createShot(payload);
+      const shot = await createShot(payload);
+      if (videoFile) {
+        await uploadShotVideo(shot.id, videoFile);
+      }
       notifications.show({ message: "Shot logged!", color: "green" });
       navigate("/shots");
     } catch {
@@ -150,7 +157,7 @@ export default function NewShotPage() {
             />
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 6 }}>
-            <Select
+            <Autocomplete
               label="Maker"
               required
               data={["Scott", "Sara"]}
@@ -262,6 +269,17 @@ export default function NewShotPage() {
           </Grid.Col>
           <Grid.Col span={12}>
             <Textarea label="Notes" rows={3} {...form.getInputProps("notes")} />
+          </Grid.Col>
+          <Grid.Col span={12}>
+            <FileInput
+              label="Video (optional)"
+              placeholder="Select video file…"
+              accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-matroska"
+              leftSection={<IconVideo size={16} />}
+              value={videoFile}
+              onChange={setVideoFile}
+              clearable
+            />
           </Grid.Col>
         </Grid>
         <Group mt="md">

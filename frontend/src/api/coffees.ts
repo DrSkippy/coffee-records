@@ -13,3 +13,12 @@ export const updateCoffee = (id: number, data: Partial<Coffee>) =>
   api.put<Coffee>(`/coffees/${id}`, data).then((r) => r.data);
 
 export const deleteCoffee = (id: number) => api.delete(`/coffees/${id}`);
+
+export const uploadCoffeeImage = (id: number, file: File) => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post<Coffee>(`/coffees/${id}/image`, form).then((r) => r.data);
+};
+
+export const deleteCoffeeImage = (id: number) =>
+  api.delete<Coffee>(`/coffees/${id}/image`).then((r) => r.data);

@@ -3,6 +3,7 @@ import {
   Badge,
   Button,
   Group,
+  Image,
   Modal,
   Select,
   Stack,
@@ -10,13 +11,23 @@ import {
   Text,
   TextInput,
   Title,
+  Tooltip,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconPencil, IconTrash } from "@tabler/icons-react";
-import { useEffect, useState } from "react";
-import { createCoffee, deleteCoffee, getCoffees, updateCoffee } from "../api/coffees";
+import { IconPencil, IconPhoto, IconTrash, IconX } from "@tabler/icons-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  createCoffee,
+  deleteCoffee,
+  deleteCoffeeImage,
+  getCoffees,
+  updateCoffee,
+  uploadCoffeeImage,
+} from "../api/coffees";
 import type { Coffee } from "../types";
+
+const IMAGE_BASE_URL = "https://resources.drskippy.app/coffee";
 
 interface CoffeeForm {
   name: string;
@@ -32,6 +43,8 @@ export default function CoffeesPage() {
   const [coffees, setCoffees] = useState<Coffee[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Coffee | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingFor, setUploadingFor] = useState<number | null>(null);
 
   const form = useForm<CoffeeForm>({
     initialValues: {
@@ -103,6 +116,34 @@ export default function CoffeesPage() {
     }
   };
 
+  const triggerUpload = (coffeeId: number) => {
+    setUploadingFor(coffeeId);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || uploadingFor === null) return;
+    try {
+      const updated = await uploadCoffeeImage(uploadingFor, file);
+      setCoffees((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    } catch {
+      notifications.show({ message: "Upload failed", color: "red" });
+    } finally {
+      e.target.value = "";
+      setUploadingFor(null);
+    }
+  };
+
+  const handleDeleteImage = async (id: number) => {
+    try {
+      const updated = await deleteCoffeeImage(id);
+      setCoffees((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    } catch {
+      notifications.show({ message: "Failed to remove photo", color: "red" });
+    }
+  };
+
   return (
     <Stack>
       <Group justify="space-between">
@@ -110,9 +151,19 @@ export default function CoffeesPage() {
         <Button onClick={openCreate}>+ Add Coffee</Button>
       </Group>
 
+      {/* Hidden file input shared across all rows */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={handleFileChange}
+      />
+
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
+            <Table.Th w={56}>Photo</Table.Th>
             <Table.Th>Name</Table.Th>
             <Table.Th>Roaster</Table.Th>
             <Table.Th>Roast Date</Table.Th>
@@ -122,38 +173,79 @@ export default function CoffeesPage() {
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
-          {coffees.map((c) => (
-            <Table.Tr key={c.id}>
-              <Table.Td>{c.name}</Table.Td>
-              <Table.Td>{c.roaster}</Table.Td>
-              <Table.Td>{c.roast_date ?? "—"}</Table.Td>
-              <Table.Td>
-                {c.roast_level ? (
-                  <Badge size="sm">{c.roast_level}</Badge>
-                ) : (
-                  "—"
-                )}
-              </Table.Td>
-              <Table.Td>{c.origin_country ?? "—"}</Table.Td>
-              <Table.Td>
-                <Group gap="xs">
-                  <ActionIcon variant="subtle" onClick={() => openEdit(c)}>
-                    <IconPencil size={16} />
-                  </ActionIcon>
-                  <ActionIcon
-                    variant="subtle"
-                    color="red"
-                    onClick={() => handleDelete(c.id)}
-                  >
-                    <IconTrash size={16} />
-                  </ActionIcon>
-                </Group>
-              </Table.Td>
-            </Table.Tr>
-          ))}
+          {coffees.map((c) => {
+            const imageUrl = c.image_filename
+              ? `${IMAGE_BASE_URL}/${c.image_filename}`
+              : null;
+            return (
+              <Table.Tr key={c.id}>
+                <Table.Td>
+                  {imageUrl ? (
+                    <Group gap={4} wrap="nowrap">
+                      <Image
+                        src={imageUrl}
+                        w={40}
+                        h={40}
+                        fit="cover"
+                        radius="sm"
+                        component="a"
+                        href={imageUrl}
+                        target="_blank"
+                        style={{ cursor: "pointer", display: "block" }}
+                      />
+                      <Tooltip label="Remove photo">
+                        <ActionIcon
+                          variant="subtle"
+                          color="red"
+                          size="xs"
+                          onClick={() => handleDeleteImage(c.id)}
+                        >
+                          <IconX size={12} />
+                        </ActionIcon>
+                      </Tooltip>
+                    </Group>
+                  ) : (
+                    <Tooltip label="Upload photo">
+                      <ActionIcon
+                        variant="subtle"
+                        onClick={() => triggerUpload(c.id)}
+                      >
+                        <IconPhoto size={16} />
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
+                </Table.Td>
+                <Table.Td>{c.name}</Table.Td>
+                <Table.Td>{c.roaster}</Table.Td>
+                <Table.Td>{c.roast_date ?? "—"}</Table.Td>
+                <Table.Td>
+                  {c.roast_level ? (
+                    <Badge size="sm">{c.roast_level}</Badge>
+                  ) : (
+                    "—"
+                  )}
+                </Table.Td>
+                <Table.Td>{c.origin_country ?? "—"}</Table.Td>
+                <Table.Td>
+                  <Group gap="xs">
+                    <ActionIcon variant="subtle" onClick={() => openEdit(c)}>
+                      <IconPencil size={16} />
+                    </ActionIcon>
+                    <ActionIcon
+                      variant="subtle"
+                      color="red"
+                      onClick={() => handleDelete(c.id)}
+                    >
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Group>
+                </Table.Td>
+              </Table.Tr>
+            );
+          })}
           {coffees.length === 0 && (
             <Table.Tr>
-              <Table.Td colSpan={6}>
+              <Table.Td colSpan={7}>
                 <Text c="dimmed" ta="center">
                   No coffees yet
                 </Text>

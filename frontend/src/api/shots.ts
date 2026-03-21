@@ -23,3 +23,12 @@ export const updateShot = (id: number, data: Partial<Shot>) =>
   api.put<Shot>(`/shots/${id}`, data).then((r) => r.data);
 
 export const deleteShot = (id: number) => api.delete(`/shots/${id}`);
+
+export const uploadShotVideo = (id: number, file: File) => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post<Shot>(`/shots/${id}/video`, form).then((r) => r.data);
+};
+
+export const deleteShotVideo = (id: number) =>
+  api.delete<Shot>(`/shots/${id}/video`).then((r) => r.data);

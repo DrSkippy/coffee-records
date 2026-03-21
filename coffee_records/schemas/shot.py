@@ -5,14 +5,14 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from coffee_records.models.shot import DrinkType, Maker
+from coffee_records.models.shot import DrinkType
 
 
 class ShotCreate(BaseModel):
     """Payload for creating a shot."""
 
     date: Date
-    maker: Maker
+    maker: str
     coffee_id: int | None = None
     dose_weight: float | None = None
     pre_infusion_time: str | None = None
@@ -35,7 +35,7 @@ class ShotUpdate(BaseModel):
     """Payload for updating a shot (all fields optional)."""
 
     date: Date | None = None
-    maker: Maker | None = None
+    maker: str | None = None
     coffee_id: int | None = None
     dose_weight: float | None = None
     pre_infusion_time: str | None = None
@@ -59,7 +59,7 @@ class ShotResponse(BaseModel):
 
     id: int
     date: Date
-    maker: Maker
+    maker: str
     coffee_id: int | None
     coffee_name: str | None
     dose_weight: float | None
@@ -76,6 +76,7 @@ class ShotResponse(BaseModel):
     wdt: bool
     flow_taper: bool
     notes: str | None
+    video_filename: str | None
     grinder_id: int | None
     grinder_label: str | None
     device_id: int | None
@@ -124,6 +125,7 @@ class ShotResponse(BaseModel):
             wdt=s.wdt,
             flow_taper=s.flow_taper,
             notes=s.notes,
+            video_filename=s.video_filename,
             grinder_id=s.grinder_id,
             grinder_label=grinder_label,
             device_id=s.device_id,

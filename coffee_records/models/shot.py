@@ -9,13 +9,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from coffee_records.database import Base
 
 
-class Maker(str, enum.Enum):
-    """Who pulled the shot."""
-
-    scott = "Scott"
-    sara = "Sara"
-
-
 class DrinkType(str, enum.Enum):
     """Final drink type."""
 
@@ -32,7 +25,7 @@ class Shot(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     date: Mapped[date] = mapped_column(Date, nullable=False)
-    maker: Mapped[Maker] = mapped_column(Enum(Maker, name="maker"), nullable=False)
+    maker: Mapped[str] = mapped_column(String(255), nullable=False)
 
     coffee_id: Mapped[int | None] = mapped_column(
         ForeignKey("coffees.id"), nullable=True
@@ -56,6 +49,7 @@ class Shot(Base):
     flow_taper: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    video_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     grinder_id: Mapped[int | None] = mapped_column(
         ForeignKey("grinders.id"), nullable=True

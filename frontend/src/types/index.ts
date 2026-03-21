@@ -1,7 +1,7 @@
 export type RoastLevel = "light" | "medium" | "dark";
 export type GrinderType = "flat" | "conical" | "blade";
 export type DrinkType = "americano" | "latte" | "cappuccino" | "drip";
-export type Maker = "Scott" | "Sara";
+export type Maker = string;
 
 export interface Coffee {
   id: number;
@@ -12,6 +12,7 @@ export interface Coffee {
   roast_level: RoastLevel | null;
   variety: string | null;
   process: string | null;
+  image_filename: string | null;
   created_at: string;
 }
 
@@ -62,6 +63,7 @@ export interface Shot {
   wdt: boolean;
   flow_taper: boolean;
   notes: string | null;
+  video_filename: string | null;
   grinder_id: number | null;
   grinder_label: string | null;
   device_id: number | null;

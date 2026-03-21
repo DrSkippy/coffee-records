@@ -1,5 +1,8 @@
-import { Badge, Card, Group, Stack, Text } from "@mantine/core";
+import { ActionIcon, Badge, Card, Group, Stack, Text, Tooltip } from "@mantine/core";
+import { IconVideo } from "@tabler/icons-react";
 import type { Shot } from "../../types";
+
+const VIDEO_BASE_URL = "https://resources.drskippy.app/coffee";
 
 export default function ShotCard({ shot }: { shot: Shot }) {
   const flags = [
@@ -13,9 +16,22 @@ export default function ShotCard({ shot }: { shot: Shot }) {
     <Card shadow="sm" padding="sm" withBorder mb="xs">
       <Group justify="space-between" mb="xs">
         <Text fw={600}>{shot.date}</Text>
-        <Badge color={shot.maker === "Scott" ? "blue" : "grape"}>
-          {shot.maker}
-        </Badge>
+        <Group gap="xs">
+          {shot.video_filename && (
+            <Tooltip label="Watch video">
+              <ActionIcon
+                component="a"
+                href={`${VIDEO_BASE_URL}/${shot.video_filename}`}
+                target="_blank"
+                variant="subtle"
+                size="sm"
+              >
+                <IconVideo size={16} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          <Badge color="coffee.7">{shot.maker}</Badge>
+        </Group>
       </Group>
       <Stack gap={4}>
         {shot.coffee_name && <Text size="sm">Coffee: {shot.coffee_name}</Text>}

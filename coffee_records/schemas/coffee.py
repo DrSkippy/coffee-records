@@ -42,6 +42,7 @@ class CoffeeResponse(BaseModel):
     roast_level: RoastLevel | None
     variety: str | None
     process: str | None
+    image_filename: str | None
     created_at: datetime
 
     model_config = {"from_attributes": True}

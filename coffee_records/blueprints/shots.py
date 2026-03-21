@@ -1,15 +1,58 @@
 """Shots blueprint — /api/shots."""
 
+import uuid
 from datetime import date
+from pathlib import Path
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy.orm import joinedload
+from werkzeug.datastructures import FileStorage
 
+from coffee_records.config import Config
 from coffee_records.database import get_session
 from coffee_records.models.shot import Shot
 from coffee_records.schemas.shot import ShotCreate, ShotResponse, ShotUpdate
 
 shots_bp = Blueprint("shots", __name__, url_prefix="/api/shots")
+
+ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".mov", ".webm", ".avi", ".mkv"}
+
+
+def _cfg() -> Config:
+    """Return the application config."""
+    return current_app.config["APP_CONFIG"]  # type: ignore[return-value]
+
+
+def _save_video(file: FileStorage, cfg: Config) -> str:
+    """Save an uploaded video and return its filename.
+
+    Args:
+        file: The uploaded file object.
+        cfg: Application config.
+
+    Returns:
+        The saved filename (UUID-based).
+    """
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in ALLOWED_VIDEO_EXTENSIONS:
+        ext = ".mp4"
+    filename = f"{uuid.uuid4()}{ext}"
+    dest = Path(cfg.uploads.coffee_image_dir)
+    dest.mkdir(parents=True, exist_ok=True)
+    file.save(dest / filename)
+    return filename
+
+
+def _delete_video_file(filename: str, cfg: Config) -> None:
+    """Delete a video file from disk if it exists.
+
+    Args:
+        filename: The filename to delete.
+        cfg: Application config.
+    """
+    path = Path(cfg.uploads.coffee_image_dir) / filename
+    if path.exists():
+        path.unlink()
 
 
 def _load_shot(session: object, shot_id: int) -> Shot | None:
@@ -150,6 +193,61 @@ def delete_shot(shot_id: int) -> object:
         shot = session.get(Shot, shot_id)
         if shot is None:
             return jsonify({"error": "Shot not found"}), 404
+        if shot.video_filename:
+            _delete_video_file(shot.video_filename, _cfg())
         session.delete(shot)
         session.commit()
         return "", 204
+
+
+@shots_bp.post("/<int:shot_id>/video")
+def upload_shot_video(shot_id: int) -> object:
+    """Upload a video for a shot.
+
+    Args:
+        shot_id: Shot primary key.
+
+    Returns:
+        JSON updated ShotResponse or 400/404.
+    """
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"error": "Empty filename"}), 400
+    cfg = _cfg()
+    with get_session() as session:
+        shot = session.get(Shot, shot_id)
+        if shot is None:
+            return jsonify({"error": "Shot not found"}), 404
+        if shot.video_filename:
+            _delete_video_file(shot.video_filename, cfg)
+        shot.video_filename = _save_video(file, cfg)
+        session.commit()
+        loaded = _load_shot(session, shot_id)
+        assert loaded is not None
+        return jsonify(ShotResponse.from_orm_shot(loaded).model_dump(mode="json"))
+
+
+@shots_bp.delete("/<int:shot_id>/video")
+def delete_shot_video(shot_id: int) -> object:
+    """Remove the video for a shot.
+
+    Args:
+        shot_id: Shot primary key.
+
+    Returns:
+        JSON updated ShotResponse or 404.
+    """
+    cfg = _cfg()
+    with get_session() as session:
+        shot = session.get(Shot, shot_id)
+        if shot is None:
+            return jsonify({"error": "Shot not found"}), 404
+        if shot.video_filename:
+            _delete_video_file(shot.video_filename, cfg)
+            shot.video_filename = None
+            session.commit()
+        loaded = _load_shot(session, shot_id)
+        assert loaded is not None
+        return jsonify(ShotResponse.from_orm_shot(loaded).model_dump(mode="json"))

@@ -2,7 +2,7 @@
 
 from coffee_records.models.coffee import Coffee, RoastLevel
 from coffee_records.models.equipment import BrewingDevice, Grinder, GrinderType, Scale
-from coffee_records.models.shot import DrinkType, Maker, Shot
+from coffee_records.models.shot import DrinkType, Shot
 
 __all__ = [
     "Coffee",
@@ -13,5 +13,4 @@ __all__ = [
     "Scale",
     "Shot",
     "DrinkType",
-    "Maker",
 ]

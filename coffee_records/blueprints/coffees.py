@@ -1,14 +1,58 @@
 """Coffees blueprint — /api/coffees."""
 
-from flask import Blueprint, jsonify, request
-from sqlalchemy.orm import Session
+import uuid
+from pathlib import Path
 
+from flask import Blueprint, current_app, jsonify, request
+from sqlalchemy.orm import Session
+from werkzeug.datastructures import FileStorage
+
+from coffee_records.config import Config
 from coffee_records.database import get_session
 from coffee_records.models.coffee import Coffee
 from coffee_records.models.shot import Shot
 from coffee_records.schemas.coffee import CoffeeCreate, CoffeeResponse, CoffeeUpdate
 
 coffees_bp = Blueprint("coffees", __name__, url_prefix="/api/coffees")
+
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+
+
+def _cfg() -> Config:
+    """Return the application config."""
+    return current_app.config["APP_CONFIG"]  # type: ignore[return-value]
+
+
+def _save_image(file: FileStorage, cfg: Config) -> str:
+    """Save an uploaded image and return its filename.
+
+    Args:
+        file: The uploaded file object.
+        cfg: Application config.
+
+    Returns:
+        The saved filename (UUID-based).
+    """
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        ext = ".jpg"
+    filename = f"{uuid.uuid4()}{ext}"
+    dest = Path(cfg.uploads.coffee_image_dir)
+    dest.mkdir(parents=True, exist_ok=True)
+    file.save(dest / filename)
+    return filename
+
+
+def _delete_image_file(filename: str, cfg: Config) -> None:
+    """Delete an image file from disk if it exists.
+
+    Args:
+        filename: The filename to delete.
+        cfg: Application config.
+    """
+    path = Path(cfg.uploads.coffee_image_dir) / filename
+    if path.exists():
+        path.unlink()
 
 
 @coffees_bp.get("")
@@ -105,6 +149,57 @@ def delete_coffee(coffee_id: int) -> object:
         session.delete(coffee)
         session.commit()
         return "", 204
+
+
+@coffees_bp.post("/<int:coffee_id>/image")
+def upload_coffee_image(coffee_id: int) -> object:
+    """Upload a label photo for a coffee.
+
+    Args:
+        coffee_id: The coffee's primary key.
+
+    Returns:
+        JSON updated CoffeeResponse or 400/404.
+    """
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"error": "Empty filename"}), 400
+    cfg = _cfg()
+    with get_session() as session:
+        coffee = session.get(Coffee, coffee_id)
+        if coffee is None:
+            return jsonify({"error": "Coffee not found"}), 404
+        if coffee.image_filename:
+            _delete_image_file(coffee.image_filename, cfg)
+        coffee.image_filename = _save_image(file, cfg)
+        session.commit()
+        session.refresh(coffee)
+        return jsonify(CoffeeResponse.model_validate(coffee).model_dump(mode="json"))
+
+
+@coffees_bp.delete("/<int:coffee_id>/image")
+def delete_coffee_image(coffee_id: int) -> object:
+    """Remove the label photo for a coffee.
+
+    Args:
+        coffee_id: The coffee's primary key.
+
+    Returns:
+        JSON updated CoffeeResponse or 404.
+    """
+    cfg = _cfg()
+    with get_session() as session:
+        coffee = session.get(Coffee, coffee_id)
+        if coffee is None:
+            return jsonify({"error": "Coffee not found"}), 404
+        if coffee.image_filename:
+            _delete_image_file(coffee.image_filename, cfg)
+            coffee.image_filename = None
+            session.commit()
+            session.refresh(coffee)
+        return jsonify(CoffeeResponse.model_validate(coffee).model_dump(mode="json"))
 
 
 def _get_session_ctx() -> Session:
