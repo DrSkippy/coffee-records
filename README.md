@@ -18,14 +18,31 @@ A personal espresso shot tracking application. Log every shot with dose, yield, 
 
 ### Docker (production)
 
+The image is built externally and pushed to the local registry at `localhost:5000`. `docker-compose.yml` pulls from there rather than building in place.
+
 ```bash
-docker compose build
+docker build -t localhost:5000/coffee-records:latest .
+docker push localhost:5000/coffee-records:latest
 docker compose up -d
 ```
 
 The multi-stage Dockerfile compiles the React frontend first, then copies the built assets into the Flask static directory. The single container serves both the API and the SPA.
 
 The app listens on port **8181** on the host (`0.0.0.0:8181 → container:5000`).
+
+Coffee label photos are stored on the host at `/var/www/html/resources/coffee/` (mounted into the container at `/resources`), so they persist across container restarts and are accessible to the NGINX static file server.
+
+### NGINX
+
+An NGINX proxy host config is included at `nginx/coffee.drskippy.app`. Drop it into your NGINX Proxy Manager or sites-available directory:
+
+```bash
+cp nginx/coffee.drskippy.app /etc/nginx/sites-available/coffee.drskippy.app
+ln -s /etc/nginx/sites-available/coffee.drskippy.app /etc/nginx/sites-enabled/
+nginx -s reload
+```
+
+The config proxies `coffee.drskippy.app` to `127.0.0.1:8181` with a 20 MB upload limit for photo and video uploads.
 
 ### Local development
 
@@ -151,29 +168,33 @@ Filter the list by maker using the dropdown at the top.
 
 ### New Shot
 
-Form to log a shot. All fields except date and maker are optional.
+Form to log a shot. All fields except date and maker are optional. The form opens pre-filled with sensible defaults so only changed values need to be entered.
 
-| Field | Notes |
-|---|---|
-| Date | Defaults to today |
-| Maker | Free-text with Scott / Sara as suggestions |
-| Coffee | Searchable select from the coffees list |
-| Drink type | americano / latte / cappuccino / drip |
-| Grinder | Searchable select |
-| Machine | Searchable select |
-| Scale | Searchable select |
-| Pre-infusion time | Free text, e.g. `5+5` |
-| Dose (g) | Numeric |
-| Final weight (g) | Numeric |
-| Extraction time (s) | Numeric |
-| Grinder temp before/after (°F) | Numeric |
-| Wedge / Shaker / WDT / Flow Taper | Checkboxes |
-| Notes | Free text |
-| Video | Optional video file (mp4, mov, webm, avi, mkv) — uploaded after the shot record is saved |
+| Field | Default | Notes |
+|---|---|---|
+| Date | Today | |
+| Maker | Scott | Free-text with Scott / Sara as suggestions |
+| Coffee | Most recently entered | Searchable select from the coffees list |
+| Drink type | americano | americano / latte / cappuccino / drip |
+| Grinder | Mazzer (matched by name) | Searchable select |
+| Machine | ECM Synchronika (matched by name) | Searchable select |
+| Scale | Normcore (matched by name) | Searchable select |
+| Pre-infusion time | 5+5 | Free text |
+| Dose (g) | 20 | Numeric |
+| Final weight (g) | 40 | Numeric |
+| Extraction time (s) | 28 | Numeric |
+| Grinder temp before (°F) | 64 | Numeric |
+| Grinder temp after (°F) | — | Numeric |
+| Wedge / Shaker / WDT | ✓ | Checkboxes |
+| Flow Taper | — | Checkbox |
+| Notes | — | Free text |
+| Video | — | Optional video file (mp4, mov, webm, avi, mkv) — uploaded after the shot record is saved |
+
+Equipment defaults (grinder, machine, scale) are resolved by substring match on `make + model` after the equipment list loads, so they adapt automatically if equipment records are renamed.
 
 ### Coffees
 
-Manage the catalogue of coffee bags. Each entry stores name, roaster, roast date, roast level, origin country, variety, and process. A coffee label photo can be uploaded directly from the table — a 40×40 thumbnail is shown inline; clicking it opens the full image. Photos are served from `https://resources.drskippy.app/coffee/<filename>`.
+Manage the catalogue of coffee bags. Each entry stores name, roaster, roast date, roast level, origin country, variety, and process. A coffee label photo can be uploaded directly from the table — a 40×40 thumbnail is shown inline; clicking it opens a centered modal viewer (scales to 90 vw / 600 px max, 80 vh max height) that works on both desktop and mobile. Photos are served from `https://resources.drskippy.app/coffee/<filename>`.
 
 Coffees referenced by shots cannot be deleted (returns a conflict error).
 

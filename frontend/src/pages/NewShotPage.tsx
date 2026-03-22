@@ -61,6 +61,24 @@ export default function NewShotPage() {
         setGrinders(g);
         setDevices(d);
         setScales(s);
+
+        // Default to most recently entered coffee (API returns sorted by date desc)
+        if (c.length > 0) form.setFieldValue("coffee_id", String(c[0].id));
+
+        const grinder = g.find((x) =>
+          `${x.make} ${x.model}`.toLowerCase().includes("mazzer")
+        );
+        if (grinder) form.setFieldValue("grinder_id", String(grinder.id));
+
+        const device = d.find((x) =>
+          `${x.make} ${x.model}`.toLowerCase().includes("synchronika")
+        );
+        if (device) form.setFieldValue("device_id", String(device.id));
+
+        const scale = s.find((x) =>
+          `${x.make} ${x.model}`.toLowerCase().includes("normcore")
+        );
+        if (scale) form.setFieldValue("scale_id", String(scale.id));
       }
     );
   }, []);
@@ -70,17 +88,17 @@ export default function NewShotPage() {
       date: new Date(),
       maker: "Scott",
       coffee_id: "",
-      dose_weight: "",
-      pre_infusion_time: "",
-      extraction_time: "",
+      dose_weight: 20,
+      pre_infusion_time: "5+5",
+      extraction_time: 28,
       scale_id: "",
-      final_weight: "",
-      drink_type: "",
-      grinder_temp_before: "",
+      final_weight: 40,
+      drink_type: "americano",
+      grinder_temp_before: 64,
       grinder_temp_after: "",
-      wedge: false,
-      shaker: false,
-      wdt: false,
+      wedge: true,
+      shaker: true,
+      wdt: true,
       flow_taper: false,
       notes: "",
       grinder_id: "",

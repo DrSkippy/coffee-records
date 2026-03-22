@@ -45,6 +45,7 @@ export default function CoffeesPage() {
   const [editing, setEditing] = useState<Coffee | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFor, setUploadingFor] = useState<number | null>(null);
+  const [viewingImage, setViewingImage] = useState<{ url: string; label: string } | null>(null);
 
   const form = useForm<CoffeeForm>({
     initialValues: {
@@ -188,10 +189,8 @@ export default function CoffeesPage() {
                         h={40}
                         fit="cover"
                         radius="sm"
-                        component="a"
-                        href={imageUrl}
-                        target="_blank"
-                        style={{ cursor: "pointer", display: "block" }}
+                        style={{ cursor: "pointer" }}
+                        onClick={() => setViewingImage({ url: imageUrl, label: `${c.name} — ${c.roaster}` })}
                       />
                       <Tooltip label="Remove photo">
                         <ActionIcon
@@ -254,6 +253,26 @@ export default function CoffeesPage() {
           )}
         </Table.Tbody>
       </Table>
+
+      <Modal
+        opened={!!viewingImage}
+        onClose={() => setViewingImage(null)}
+        title={viewingImage?.label}
+        size="auto"
+        centered
+        styles={{
+          body: { padding: 0 },
+          content: { maxWidth: "min(90vw, 600px)", width: "100%" },
+        }}
+      >
+        {viewingImage && (
+          <Image
+            src={viewingImage.url}
+            fit="contain"
+            style={{ maxHeight: "80vh", width: "100%", display: "block" }}
+          />
+        )}
+      </Modal>
 
       <Modal
         opened={modalOpen}

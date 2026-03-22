@@ -13,5 +13,5 @@ server:
   port: 5000
   workers: 4
 uploads:
-  coffee_image_dir: "/var/www/html/resources/coffee"
+  coffee_image_dir: "/resources"
   coffee_image_base_url: "https://resources.drskippy.app/coffee"
