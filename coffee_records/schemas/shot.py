@@ -26,6 +26,7 @@ class ShotCreate(BaseModel):
     shaker: bool = False
     wdt: bool = False
     flow_taper: bool = False
+    grind_setting: str | None = None
     notes: str | None = None
     grinder_id: int | None = None
     device_id: int | None = None
@@ -49,6 +50,7 @@ class ShotUpdate(BaseModel):
     shaker: bool | None = None
     wdt: bool | None = None
     flow_taper: bool | None = None
+    grind_setting: str | None = None
     notes: str | None = None
     grinder_id: int | None = None
     device_id: int | None = None
@@ -75,6 +77,7 @@ class ShotResponse(BaseModel):
     shaker: bool
     wdt: bool
     flow_taper: bool
+    grind_setting: str | None
     notes: str | None
     video_filename: str | None
     grinder_id: int | None
@@ -124,6 +127,7 @@ class ShotResponse(BaseModel):
             shaker=s.shaker,
             wdt=s.wdt,
             flow_taper=s.flow_taper,
+            grind_setting=s.grind_setting,
             notes=s.notes,
             video_filename=s.video_filename,
             grinder_id=s.grinder_id,

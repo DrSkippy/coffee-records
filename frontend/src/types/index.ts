@@ -62,6 +62,7 @@ export interface Shot {
   shaker: boolean;
   wdt: boolean;
   flow_taper: boolean;
+  grind_setting: string | null;
   notes: string | null;
   video_filename: string | null;
   grinder_id: number | null;
@@ -104,4 +105,30 @@ export interface ByCoffeeReport {
     final_weight: number | null;
     extraction_time: number | null;
   }>;
+}
+
+export interface GrindRegressionPoint {
+  shot_id: number;
+  date: string;
+  x1: number;
+  x2: number;
+  y: number;
+  y_str: string;
+  y_predicted: number;
+  y_predicted_str: string;
+}
+
+export interface GrindRegressionGrinder {
+  grinder_id: number;
+  grinder_label: string;
+  n_shots: number;
+  coefficients: { a: number; b: number; c: number };
+  r_squared: number | null;
+  points: GrindRegressionPoint[];
+}
+
+export interface GrindRegressionResult {
+  coffee_id: number;
+  roast_date: string;
+  grinders: GrindRegressionGrinder[];
 }

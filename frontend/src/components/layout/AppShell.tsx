@@ -13,6 +13,7 @@ import {
   IconPlus,
   IconSettings,
   IconList,
+  IconTarget,
 } from "@tabler/icons-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -24,6 +25,7 @@ const navItems = [
   { path: "/coffees", label: "Coffees", icon: IconCoffee },
   { path: "/equipment", label: "Equipment", icon: IconSettings },
   { path: "/reports", label: "Reports", icon: IconChartBar },
+  { path: "/planner", label: "Shot Planner", icon: IconTarget },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {

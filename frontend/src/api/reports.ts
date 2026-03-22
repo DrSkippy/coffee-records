@@ -2,6 +2,7 @@ import type {
   ByCoffeeReport,
   DoseYieldPoint,
   ExtractionPoint,
+  GrindRegressionResult,
   ShotsPerDayPoint,
 } from "../types";
 import api from "./client";
@@ -26,4 +27,11 @@ export const getExtractionTrends = (params: ReportParams = {}) =>
 export const getByCoffee = (coffeeId: number, params: ReportParams = {}) =>
   api
     .get<ByCoffeeReport>(`/reports/by-coffee/${coffeeId}`, { params })
+    .then((r) => r.data);
+
+export const getGrindRegression = (coffeeId: number, grinderId?: number) =>
+  api
+    .get<GrindRegressionResult>("/reports/grind-regression", {
+      params: { coffee_id: coffeeId, ...(grinderId ? { grinder_id: grinderId } : {}) },
+    })
     .then((r) => r.data);

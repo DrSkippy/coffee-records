@@ -40,6 +40,7 @@ interface FormValues {
   shaker: boolean;
   wdt: boolean;
   flow_taper: boolean;
+  grind_setting: string;
   notes: string;
   grinder_id: string;
   device_id: string;
@@ -100,6 +101,7 @@ export default function NewShotPage() {
       shaker: true,
       wdt: true,
       flow_taper: false,
+      grind_setting: "",
       notes: "",
       grinder_id: "",
       device_id: "",
@@ -128,6 +130,7 @@ export default function NewShotPage() {
         wdt: values.wdt,
         flow_taper: values.flow_taper,
         notes: values.notes || null,
+        grind_setting: values.grind_setting || null,
         grinder_id: values.grinder_id ? Number(values.grinder_id) : null,
         device_id: values.device_id ? Number(values.device_id) : null,
       };
@@ -231,6 +234,13 @@ export default function NewShotPage() {
               label="Pre-Infusion Time"
               placeholder="e.g. 5+5"
               {...form.getInputProps("pre_infusion_time")}
+            />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 6 }}>
+            <TextInput
+              label="Grind Setting"
+              placeholder="e.g. 8+5 1/2 or 19.5"
+              {...form.getInputProps("grind_setting")}
             />
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 4 }}>

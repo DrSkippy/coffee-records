@@ -9,6 +9,7 @@ from coffee_records.services.reports import (
     by_coffee,
     dose_yield_over_time,
     extraction_trends,
+    grind_regression,
     shots_per_day,
 )
 
@@ -91,6 +92,36 @@ def report_extraction_trends() -> object:
                 session, date_from, date_to, coffee_id, grinder_id, device_id
             )
         )
+
+
+@reports_bp.get("/grind-regression")
+def report_grind_regression() -> object:
+    """Bivariate linear regression of grind setting vs days-since-roast and grinder temp.
+
+    Returns:
+        JSON with per-grinder regression coefficients, R², and data points.
+    """
+    raw = request.args.get("coffee_id")
+    if not raw:
+        return jsonify({"error": "coffee_id required"}), 400
+    try:
+        coffee_id = int(raw)
+    except ValueError:
+        return jsonify({"error": "coffee_id must be an integer"}), 400
+    explicit_grinder_id = int(g) if (g := request.args.get("grinder_id")) else None
+
+    with get_session() as session:
+        try:
+            return jsonify(grind_regression(session, coffee_id, explicit_grinder_id))
+        except ValueError as exc:
+            msg = str(exc)
+            if msg == "not_found":
+                return jsonify({"error": "coffee not found"}), 404
+            if msg == "no_roast_date":
+                return jsonify({"error": "coffee has no roast_date"}), 404
+            if msg == "insufficient_data":
+                return jsonify({"error": "fewer than 3 usable data points"}), 422
+            raise
 
 
 @reports_bp.get("/by-coffee/<int:coffee_id>")

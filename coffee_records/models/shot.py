@@ -48,6 +48,7 @@ class Shot(Base):
     wdt: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     flow_taper: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    grind_setting: Mapped[str | None] = mapped_column(String(50), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     video_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
 

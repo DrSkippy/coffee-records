@@ -129,6 +129,7 @@ Run these once against an existing database when upgrading:
 |---|---|
 | `bin/add_image_column.py` | Adds `coffees.image_filename` |
 | `bin/add_video_column.py` | Adds `shots.video_filename` |
+| `bin/add_grind_setting_column.py` | Adds `shots.grind_setting` |
 | `bin/migrate_maker_to_varchar.py` | Converts `shots.maker` from enum to VARCHAR |
 
 ```bash

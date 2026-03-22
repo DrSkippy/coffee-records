@@ -5,6 +5,7 @@ import NewShotPage from "./pages/NewShotPage";
 import CoffeesPage from "./pages/CoffeesPage";
 import EquipmentPage from "./pages/EquipmentPage";
 import ReportsPage from "./pages/ReportsPage";
+import ShotPlannerPage from "./pages/ShotPlannerPage";
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/coffees" element={<CoffeesPage />} />
         <Route path="/equipment" element={<EquipmentPage />} />
         <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/planner" element={<ShotPlannerPage />} />
       </Routes>
     </AppLayout>
   );
