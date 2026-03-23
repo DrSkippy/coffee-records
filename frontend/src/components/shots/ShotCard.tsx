@@ -1,10 +1,12 @@
 import { ActionIcon, Badge, Box, Card, Group, Stack, Text, Tooltip } from "@mantine/core";
-import { IconVideo } from "@tabler/icons-react";
+import { IconPencil, IconVideo } from "@tabler/icons-react";
+import { useNavigate } from "react-router-dom";
 import type { Shot } from "../../types";
 
 const VIDEO_BASE_URL = "https://resources.drskippy.app/coffee";
 
 export default function ShotCard({ shot }: { shot: Shot }) {
+  const navigate = useNavigate();
   const flags = [
     shot.wedge && "Wedge",
     shot.shaker && "Shaker",
@@ -35,6 +37,15 @@ export default function ShotCard({ shot }: { shot: Shot }) {
               </ActionIcon>
             </Tooltip>
           )}
+          <Tooltip label="Edit shot">
+            <ActionIcon
+              variant="subtle"
+              size="sm"
+              onClick={() => navigate(`/shots/${shot.id}/edit`)}
+            >
+              <IconPencil size={16} />
+            </ActionIcon>
+          </Tooltip>
           <Badge color="coffee.7">{shot.maker}</Badge>
         </Group>
       </Group>

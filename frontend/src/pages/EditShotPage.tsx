@@ -1,4 +1,5 @@
 import {
+  Anchor,
   Autocomplete,
   Button,
   Checkbox,
@@ -8,6 +9,7 @@ import {
   NumberInput,
   Select,
   Stack,
+  Text,
   Textarea,
   TextInput,
   Title,
@@ -18,11 +20,13 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { getCoffees } from "../api/coffees";
 import { getBrewingDevices, getGrinders, getScales } from "../api/equipment";
-import { createShot, uploadShotVideo } from "../api/shots";
+import { deleteShotVideo, getShot, updateShot, uploadShotVideo } from "../api/shots";
 import type { BrewingDevice, Coffee, Grinder, Scale } from "../types";
+
+const VIDEO_BASE_URL = "https://resources.drskippy.app/coffee";
 
 interface FormValues {
   date: Date;
@@ -46,60 +50,35 @@ interface FormValues {
   device_id: string;
 }
 
-export default function NewShotPage() {
+export default function EditShotPage() {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [coffees, setCoffees] = useState<Coffee[]>([]);
   const [grinders, setGrinders] = useState<Grinder[]>([]);
   const [devices, setDevices] = useState<BrewingDevice[]>([]);
   const [scales, setScales] = useState<Scale[]>([]);
+  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [existingVideo, setExistingVideo] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
-
-  useEffect(() => {
-    Promise.all([getCoffees(), getGrinders(), getBrewingDevices(), getScales()]).then(
-      ([c, g, d, s]) => {
-        setCoffees(c);
-        setGrinders(g);
-        setDevices(d);
-        setScales(s);
-
-        // Default to most recently entered coffee (API returns sorted by date desc)
-        if (c.length > 0) form.setFieldValue("coffee_id", String(c[0].id));
-
-        const grinder = g.find((x) =>
-          `${x.make} ${x.model}`.toLowerCase().includes("mazzer")
-        );
-        if (grinder) form.setFieldValue("grinder_id", String(grinder.id));
-
-        const device = d.find((x) =>
-          `${x.make} ${x.model}`.toLowerCase().includes("synchronika")
-        );
-        if (device) form.setFieldValue("device_id", String(device.id));
-
-        const scale = s.find((x) =>
-          `${x.make} ${x.model}`.toLowerCase().includes("normcore")
-        );
-        if (scale) form.setFieldValue("scale_id", String(scale.id));
-      }
-    );
-  }, []);
+  const [removeVideo, setRemoveVideo] = useState(false);
 
   const form = useForm<FormValues>({
     initialValues: {
       date: new Date(),
-      maker: "Scott",
+      maker: "",
       coffee_id: "",
-      dose_weight: 20,
-      pre_infusion_time: "5+5",
-      extraction_time: 28,
+      dose_weight: "",
+      pre_infusion_time: "",
+      extraction_time: "",
       scale_id: "",
-      final_weight: 40,
-      drink_type: "americano",
-      grinder_temp_before: 64,
+      final_weight: "",
+      drink_type: "",
+      grinder_temp_before: "",
       grinder_temp_after: "",
-      wedge: true,
-      shaker: true,
-      wdt: true,
+      wedge: false,
+      shaker: false,
+      wdt: false,
       flow_taper: false,
       grind_setting: "",
       notes: "",
@@ -107,6 +86,50 @@ export default function NewShotPage() {
       device_id: "",
     },
   });
+
+  useEffect(() => {
+    const shotId = Number(id);
+    Promise.all([
+      getShot(shotId),
+      getCoffees(),
+      getGrinders(),
+      getBrewingDevices(),
+      getScales(),
+    ])
+      .then(([shot, c, g, d, s]) => {
+        setCoffees(c);
+        setGrinders(g);
+        setDevices(d);
+        setScales(s);
+        setExistingVideo(shot.video_filename);
+        form.setValues({
+          date: dayjs(shot.date).toDate(),
+          maker: shot.maker,
+          coffee_id: shot.coffee_id ? String(shot.coffee_id) : "",
+          dose_weight: shot.dose_weight ?? "",
+          pre_infusion_time: shot.pre_infusion_time ?? "",
+          extraction_time: shot.extraction_time ?? "",
+          scale_id: shot.scale_id ? String(shot.scale_id) : "",
+          final_weight: shot.final_weight ?? "",
+          drink_type: shot.drink_type ?? "",
+          grinder_temp_before: shot.grinder_temp_before ?? "",
+          grinder_temp_after: shot.grinder_temp_after ?? "",
+          wedge: shot.wedge,
+          shaker: shot.shaker,
+          wdt: shot.wdt,
+          flow_taper: shot.flow_taper,
+          grind_setting: shot.grind_setting ?? "",
+          notes: shot.notes ?? "",
+          grinder_id: shot.grinder_id ? String(shot.grinder_id) : "",
+          device_id: shot.device_id ? String(shot.device_id) : "",
+        });
+      })
+      .catch(() => {
+        notifications.show({ message: "Shot not found", color: "red" });
+        navigate("/shots");
+      })
+      .finally(() => setLoading(false));
+  }, [id]);
 
   const handleSubmit = async (values: FormValues) => {
     setSubmitting(true);
@@ -120,7 +143,12 @@ export default function NewShotPage() {
         extraction_time: values.extraction_time !== "" ? Number(values.extraction_time) : null,
         scale_id: values.scale_id ? Number(values.scale_id) : null,
         final_weight: values.final_weight !== "" ? Number(values.final_weight) : null,
-        drink_type: (values.drink_type || null) as "americano" | "latte" | "cappuccino" | "drip" | null,
+        drink_type: (values.drink_type || null) as
+          | "americano"
+          | "latte"
+          | "cappuccino"
+          | "drip"
+          | null,
         grinder_temp_before:
           values.grinder_temp_before !== "" ? Number(values.grinder_temp_before) : null,
         grinder_temp_after:
@@ -134,14 +162,17 @@ export default function NewShotPage() {
         grinder_id: values.grinder_id ? Number(values.grinder_id) : null,
         device_id: values.device_id ? Number(values.device_id) : null,
       };
-      const shot = await createShot(payload);
-      if (videoFile) {
-        await uploadShotVideo(shot.id, videoFile);
+      const shotId = Number(id);
+      await updateShot(shotId, payload);
+      if (removeVideo) {
+        await deleteShotVideo(shotId);
+      } else if (videoFile) {
+        await uploadShotVideo(shotId, videoFile);
       }
-      notifications.show({ message: "Shot logged!", color: "green" });
+      notifications.show({ message: "Shot updated!", color: "green" });
       navigate("/shots");
     } catch {
-      notifications.show({ message: "Failed to save shot", color: "red" });
+      notifications.show({ message: "Failed to update shot", color: "red" });
     } finally {
       setSubmitting(false);
     }
@@ -164,9 +195,13 @@ export default function NewShotPage() {
     label: `${s.make} ${s.model}`,
   }));
 
+  if (loading) {
+    return <Text>Loading…</Text>;
+  }
+
   return (
     <Stack>
-      <Title order={2}>New Shot</Title>
+      <Title order={2}>Edit Shot</Title>
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Grid gutter="sm">
           <Grid.Col span={{ base: 12, sm: 6 }}>
@@ -203,57 +238,6 @@ export default function NewShotPage() {
             />
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 6 }}>
-            <TextInput
-              label="Grind Setting"
-              placeholder="e.g. 8+5 1/2 or 19.5"
-              {...form.getInputProps("grind_setting")}
-            />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, sm: 6 }}>
-            <NumberInput
-              label="Dose (g)"
-              decimalScale={1}
-              step={0.1}
-              min={0}
-              {...form.getInputProps("dose_weight")}
-            />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, sm: 6 }}>
-            <NumberInput
-              label="Final Weight (g)"
-              decimalScale={1}
-              step={0.1}
-              min={0}
-              {...form.getInputProps("final_weight")}
-            />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, sm: 6 }}>
-            <NumberInput
-              label="Extraction Time (s)"
-              decimalScale={1}
-              step={0.5}
-              min={0}
-              {...form.getInputProps("extraction_time")}
-            />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, sm: 6 }}>
-            <NumberInput
-              label="Grinder Temp Before (°F)"
-              decimalScale={1}
-              {...form.getInputProps("grinder_temp_before")}
-            />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, sm: 6 }}>
-            <NumberInput
-              label="Grinder Temp After (°F)"
-              decimalScale={1}
-              {...form.getInputProps("grinder_temp_after")}
-            />
-          </Grid.Col>
-          <Grid.Col span={12}>
-            <Textarea label="Notes" rows={3} {...form.getInputProps("notes")} />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, sm: 6 }}>
             <Select
               label="Grinder"
               data={grinderData}
@@ -287,6 +271,54 @@ export default function NewShotPage() {
               {...form.getInputProps("pre_infusion_time")}
             />
           </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 6 }}>
+            <TextInput
+              label="Grind Setting"
+              placeholder="e.g. 8+5 1/2 or 19.5"
+              {...form.getInputProps("grind_setting")}
+            />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 4 }}>
+            <NumberInput
+              label="Dose (g)"
+              decimalScale={1}
+              step={0.1}
+              min={0}
+              {...form.getInputProps("dose_weight")}
+            />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 4 }}>
+            <NumberInput
+              label="Final Weight (g)"
+              decimalScale={1}
+              step={0.1}
+              min={0}
+              {...form.getInputProps("final_weight")}
+            />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 4 }}>
+            <NumberInput
+              label="Extraction Time (s)"
+              decimalScale={1}
+              step={0.5}
+              min={0}
+              {...form.getInputProps("extraction_time")}
+            />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 6 }}>
+            <NumberInput
+              label="Grinder Temp Before (°F)"
+              decimalScale={1}
+              {...form.getInputProps("grinder_temp_before")}
+            />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, sm: 6 }}>
+            <NumberInput
+              label="Grinder Temp After (°F)"
+              decimalScale={1}
+              {...form.getInputProps("grinder_temp_after")}
+            />
+          </Grid.Col>
           <Grid.Col span={12}>
             <Group>
               <Checkbox label="Wedge" {...form.getInputProps("wedge", { type: "checkbox" })} />
@@ -299,20 +331,72 @@ export default function NewShotPage() {
             </Group>
           </Grid.Col>
           <Grid.Col span={12}>
-            <FileInput
-              label="Video (optional)"
-              placeholder="Select video file…"
-              accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-matroska"
-              leftSection={<IconVideo size={16} />}
-              value={videoFile}
-              onChange={setVideoFile}
-              clearable
-            />
+            <Textarea label="Notes" rows={3} {...form.getInputProps("notes")} />
+          </Grid.Col>
+          <Grid.Col span={12}>
+            {existingVideo && !removeVideo ? (
+              <Stack gap={4}>
+                <Text size="sm" fw={500}>
+                  Current Video
+                </Text>
+                <Group gap="xs">
+                  <Anchor
+                    href={`${VIDEO_BASE_URL}/${existingVideo}`}
+                    target="_blank"
+                    size="sm"
+                  >
+                    <Group gap={4}>
+                      <IconVideo size={14} />
+                      View video
+                    </Group>
+                  </Anchor>
+                  <Button
+                    variant="subtle"
+                    color="red"
+                    size="xs"
+                    onClick={() => setRemoveVideo(true)}
+                  >
+                    Remove
+                  </Button>
+                </Group>
+                <FileInput
+                  label="Replace video (optional)"
+                  placeholder="Select video file…"
+                  accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-matroska"
+                  leftSection={<IconVideo size={16} />}
+                  value={videoFile}
+                  onChange={setVideoFile}
+                  clearable
+                />
+              </Stack>
+            ) : (
+              <Stack gap={4}>
+                {removeVideo && (
+                  <Group gap="xs">
+                    <Text size="sm" c="red">
+                      Video will be removed on save.
+                    </Text>
+                    <Button variant="subtle" size="xs" onClick={() => setRemoveVideo(false)}>
+                      Undo
+                    </Button>
+                  </Group>
+                )}
+                <FileInput
+                  label="Video (optional)"
+                  placeholder="Select video file…"
+                  accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-matroska"
+                  leftSection={<IconVideo size={16} />}
+                  value={videoFile}
+                  onChange={setVideoFile}
+                  clearable
+                />
+              </Stack>
+            )}
           </Grid.Col>
         </Grid>
         <Group mt="md">
           <Button type="submit" loading={submitting}>
-            Save Shot
+            Save Changes
           </Button>
           <Button variant="subtle" onClick={() => navigate("/shots")}>
             Cancel
