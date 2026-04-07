@@ -30,6 +30,13 @@ const theme = createTheme({
       "#482e1d", // 9 - Espresso
     ],
   },
+  components: {
+    Combobox: {
+      styles: {
+        dropdown: { backgroundColor: "#e8c490" },
+      },
+    },
+  },
 });
 
 createRoot(document.getElementById("root")!).render(

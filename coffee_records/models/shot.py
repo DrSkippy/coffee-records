@@ -33,6 +33,7 @@ class Shot(Base):
     dose_weight: Mapped[float | None] = mapped_column(Float, nullable=True)
     pre_infusion_time: Mapped[str | None] = mapped_column(String(50), nullable=True)
     extraction_time: Mapped[float | None] = mapped_column(Float, nullable=True)
+    extraction_delta: Mapped[float | None] = mapped_column(Float, nullable=True, default=0.0)
     scale_id: Mapped[int | None] = mapped_column(
         ForeignKey("scales.id"), nullable=True
     )

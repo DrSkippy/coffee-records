@@ -10,7 +10,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from coffee_records.models.coffee import Coffee
-from coffee_records.models.equipment import Grinder
+from coffee_records.models.equipment import BrewingDevice, Grinder
 from coffee_records.models.shot import Shot
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,11 @@ def dose_yield_over_time(
             Shot.id,
             Shot.dose_weight,
             Shot.final_weight,
+            Shot.device_id,
+            BrewingDevice.make,
+            BrewingDevice.model,
         )
+        .outerjoin(BrewingDevice, Shot.device_id == BrewingDevice.id)
         .filter(Shot.date >= date_from, Shot.date <= date_to)
         .filter(Shot.dose_weight.isnot(None), Shot.final_weight.isnot(None))
     )
@@ -72,6 +76,7 @@ def dose_yield_over_time(
     results = []
     for row in rows:
         ratio = row.final_weight / row.dose_weight if row.dose_weight else None
+        device_label = f"{row.make} {row.model}" if row.make else None
         results.append(
             {
                 "date": row.date.isoformat(),
@@ -79,6 +84,8 @@ def dose_yield_over_time(
                 "dose_weight": row.dose_weight,
                 "final_weight": row.final_weight,
                 "ratio": round(ratio, 3) if ratio is not None else None,
+                "device_id": row.device_id,
+                "device_label": device_label,
             }
         )
     return results
@@ -151,7 +158,15 @@ def extraction_trends(
         date_to = date_to or d_to
 
     q = (
-        session.query(Shot.date, Shot.id, Shot.extraction_time)
+        session.query(
+            Shot.date,
+            Shot.id,
+            Shot.extraction_time,
+            Shot.device_id,
+            BrewingDevice.make,
+            BrewingDevice.model,
+        )
+        .outerjoin(BrewingDevice, Shot.device_id == BrewingDevice.id)
         .filter(Shot.date >= date_from, Shot.date <= date_to)
         .filter(Shot.extraction_time.isnot(None))
     )
@@ -167,6 +182,8 @@ def extraction_trends(
             "date": row.date.isoformat(),
             "shot_id": row.id,
             "extraction_time": row.extraction_time,
+            "device_id": row.device_id,
+            "device_label": f"{row.make} {row.model}" if row.make else None,
         }
         for row in rows
     ]

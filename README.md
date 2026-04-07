@@ -131,6 +131,7 @@ Run these once against an existing database when upgrading:
 | `bin/add_video_column.py` | Adds `shots.video_filename` |
 | `bin/add_grind_setting_column.py` | Adds `shots.grind_setting` |
 | `bin/migrate_maker_to_varchar.py` | Converts `shots.maker` from enum to VARCHAR |
+| `bin/add_extraction_delta_column.py` | Adds `shots.extraction_delta`; backfills −5 for "over extracted" notes, +5 for "under extracted" |
 
 ```bash
 poetry run python bin/<script>.py
@@ -184,6 +185,7 @@ Form to log a shot. All fields except date and maker are optional. The form open
 | Dose (g) | 20 | Numeric |
 | Final weight (g) | 40 | Numeric |
 | Extraction time (s) | 28 | Numeric |
+| Extraction delta (s) | 0 | Log-scale slider −15 to +15; estimated seconds to add (+) or subtract (−) for ideal extraction |
 | Grinder temp before (°F) | 64 | Numeric |
 | Grinder temp after (°F) | — | Numeric |
 | Wedge / Shaker / WDT | ✓ | Checkboxes |
@@ -214,9 +216,9 @@ Charts covering a selectable date range (last 7 / 30 / 90 days). All charts can 
 | Chart | Type | Description |
 |---|---|---|
 | Shots per Day | Bar | Shot count by date |
-| Extraction Time | Line | Extraction seconds per shot over time |
-| Dose:Yield Ratio | Line | Output ÷ input ratio per shot |
-| Dose vs Yield (g) | Dual line | Dose weight and yield weight per shot |
+| Extraction Time | Line | Extraction seconds per shot over time; one colored series per brewing device |
+| Dose:Yield Ratio | Line | Output ÷ input ratio per shot; one colored series per brewing device |
+| Dose vs Yield (g) | Multi-line | Dose and yield weight per shot; dose/yield pair per brewing device |
 
 ---
 
@@ -299,6 +301,7 @@ All endpoints consume and produce `application/json` unless noted.
   "dose_weight": 18.5,
   "pre_infusion_time": "5+5",
   "extraction_time": 28.0,
+  "extraction_delta": -2.5,
   "scale_id": 1,
   "scale_label": "Acaia Pearl",
   "final_weight": 37.2,
@@ -348,8 +351,8 @@ All report endpoints accept optional query parameters: `date_from`, `date_to` (I
 | Method | Path | Response shape |
 |---|---|---|
 | `GET` | `/api/reports/shots-per-day` | `[{"date": "2026-03-21", "count": 3}]` |
-| `GET` | `/api/reports/extraction-trends` | `[{"date": "...", "shot_id": 1, "extraction_time": 28.0}]` |
-| `GET` | `/api/reports/dose-yield` | `[{"date": "...", "shot_id": 1, "dose_weight": 18.5, "final_weight": 37.2, "ratio": 2.011}]` |
+| `GET` | `/api/reports/extraction-trends` | `[{"date": "...", "shot_id": 1, "extraction_time": 28.0, "device_id": 1, "device_label": "ECM Synchronika"}]` |
+| `GET` | `/api/reports/dose-yield` | `[{"date": "...", "shot_id": 1, "dose_weight": 18.5, "final_weight": 37.2, "ratio": 2.011, "device_id": 1, "device_label": "ECM Synchronika"}]` |
 | `GET` | `/api/reports/by-coffee/<id>` | Aggregate stats + shot list for one coffee |
 
 ---

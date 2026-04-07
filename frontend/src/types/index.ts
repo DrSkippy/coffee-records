@@ -52,6 +52,7 @@ export interface Shot {
   dose_weight: number | null;
   pre_infusion_time: string | null;
   extraction_time: number | null;
+  extraction_delta: number | null;
   scale_id: number | null;
   scale_label: string | null;
   final_weight: number | null;
@@ -78,6 +79,8 @@ export interface DoseYieldPoint {
   dose_weight: number;
   final_weight: number;
   ratio: number | null;
+  device_id: number | null;
+  device_label: string | null;
 }
 
 export interface ShotsPerDayPoint {
@@ -89,6 +92,8 @@ export interface ExtractionPoint {
   date: string;
   shot_id: number;
   extraction_time: number;
+  device_id: number | null;
+  device_label: string | null;
 }
 
 export interface ByCoffeeReport {

@@ -17,6 +17,7 @@ class ShotCreate(BaseModel):
     dose_weight: float | None = None
     pre_infusion_time: str | None = None
     extraction_time: float | None = None
+    extraction_delta: float = 0.0
     scale_id: int | None = None
     final_weight: float | None = None
     drink_type: DrinkType | None = None
@@ -41,6 +42,7 @@ class ShotUpdate(BaseModel):
     dose_weight: float | None = None
     pre_infusion_time: str | None = None
     extraction_time: float | None = None
+    extraction_delta: float | None = None
     scale_id: int | None = None
     final_weight: float | None = None
     drink_type: DrinkType | None = None
@@ -67,6 +69,7 @@ class ShotResponse(BaseModel):
     dose_weight: float | None
     pre_infusion_time: str | None
     extraction_time: float | None
+    extraction_delta: float | None
     scale_id: int | None
     scale_label: str | None
     final_weight: float | None
@@ -117,6 +120,7 @@ class ShotResponse(BaseModel):
             dose_weight=s.dose_weight,
             pre_infusion_time=s.pre_infusion_time,
             extraction_time=s.extraction_time,
+            extraction_delta=s.extraction_delta,
             scale_id=s.scale_id,
             scale_label=scale_label,
             final_weight=s.final_weight,

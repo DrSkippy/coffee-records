@@ -8,6 +8,7 @@ import {
   Group,
   NumberInput,
   Select,
+  Slider,
   Stack,
   Text,
   Textarea,
@@ -28,6 +29,26 @@ import type { BrewingDevice, Coffee, Grinder, Scale } from "../types";
 
 const VIDEO_BASE_URL = "https://resources.drskippy.app/coffee";
 
+const posToValue = (pos: number): number => {
+  if (pos === 0) return 0;
+  return Math.sign(pos) * (Math.exp((Math.abs(pos) / 15) * Math.log(16)) - 1);
+};
+
+const valueToPos = (val: number): number => {
+  if (val === 0) return 0;
+  return Math.sign(val) * (Math.log(Math.abs(val) + 1) / Math.log(16)) * 15;
+};
+
+const DELTA_MARKS = [
+  { value: -15, label: "-15" },
+  { value: valueToPos(-5), label: "-5" },
+  { value: valueToPos(-1), label: "-1" },
+  { value: 0, label: "0" },
+  { value: valueToPos(1), label: "1" },
+  { value: valueToPos(5), label: "5" },
+  { value: 15, label: "15" },
+];
+
 interface FormValues {
   date: Date;
   maker: string;
@@ -35,6 +56,7 @@ interface FormValues {
   dose_weight: number | string;
   pre_infusion_time: string;
   extraction_time: number | string;
+  extraction_delta: number;
   scale_id: string;
   final_weight: number | string;
   drink_type: string;
@@ -59,6 +81,7 @@ export default function EditShotPage() {
   const [scales, setScales] = useState<Scale[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [sliderPosition, setSliderPosition] = useState(0);
   const [existingVideo, setExistingVideo] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [removeVideo, setRemoveVideo] = useState(false);
@@ -71,6 +94,7 @@ export default function EditShotPage() {
       dose_weight: "",
       pre_infusion_time: "",
       extraction_time: "",
+      extraction_delta: 0,
       scale_id: "",
       final_weight: "",
       drink_type: "",
@@ -102,6 +126,8 @@ export default function EditShotPage() {
         setDevices(d);
         setScales(s);
         setExistingVideo(shot.video_filename);
+        const delta = shot.extraction_delta ?? 0;
+        setSliderPosition(valueToPos(delta));
         form.setValues({
           date: dayjs(shot.date).toDate(),
           maker: shot.maker,
@@ -109,6 +135,7 @@ export default function EditShotPage() {
           dose_weight: shot.dose_weight ?? "",
           pre_infusion_time: shot.pre_infusion_time ?? "",
           extraction_time: shot.extraction_time ?? "",
+          extraction_delta: delta,
           scale_id: shot.scale_id ? String(shot.scale_id) : "",
           final_weight: shot.final_weight ?? "",
           drink_type: shot.drink_type ?? "",
@@ -130,6 +157,11 @@ export default function EditShotPage() {
       })
       .finally(() => setLoading(false));
   }, [id]);
+
+  const handleDeltaSlider = (pos: number) => {
+    setSliderPosition(pos);
+    form.setFieldValue("extraction_delta", Math.round(posToValue(pos) * 10) / 10);
+  };
 
   const handleSubmit = async (values: FormValues) => {
     setSubmitting(true);
@@ -159,6 +191,7 @@ export default function EditShotPage() {
         flow_taper: values.flow_taper,
         notes: values.notes || null,
         grind_setting: values.grind_setting || null,
+        extraction_delta: values.extraction_delta,
         grinder_id: values.grinder_id ? Number(values.grinder_id) : null,
         device_id: values.device_id ? Number(values.device_id) : null,
       };
@@ -304,6 +337,57 @@ export default function EditShotPage() {
               min={0}
               {...form.getInputProps("extraction_time")}
             />
+          </Grid.Col>
+          <Grid.Col span={12}>
+            <Stack gap={4}>
+              <Group justify="space-between">
+                <Text size="sm" fw={500}>
+                  Extraction Delta (s)
+                </Text>
+                <Text
+                  size="sm"
+                  fw={700}
+                  c={
+                    form.values.extraction_delta > 0
+                      ? "blue"
+                      : form.values.extraction_delta < 0
+                        ? "red"
+                        : "dimmed"
+                  }
+                >
+                  {form.values.extraction_delta === 0
+                    ? "0s"
+                    : form.values.extraction_delta > 0
+                      ? `+${form.values.extraction_delta.toFixed(1)}s`
+                      : `${form.values.extraction_delta.toFixed(1)}s`}
+                </Text>
+              </Group>
+              <Text size="xs" c="dimmed">
+                Estimate: seconds to add (+) or subtract (−) for ideal extraction
+              </Text>
+              <Slider
+                styles={{
+                  bar: {
+                    width:
+                      sliderPosition === 0
+                        ? 0
+                        : `calc(${(Math.abs(sliderPosition) / 30) * 100}% + 2 * var(--slider-size))`,
+                    insetInlineStart:
+                      sliderPosition >= 0
+                        ? `calc(50% - var(--slider-size))`
+                        : `calc(${((sliderPosition + 15) / 30) * 100}% - var(--slider-size))`,
+                  },
+                }}
+                value={sliderPosition}
+                onChange={handleDeltaSlider}
+                min={-15}
+                max={15}
+                step={0.01}
+                marks={DELTA_MARKS}
+                label={null}
+                mb="md"
+              />
+            </Stack>
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 6 }}>
             <NumberInput
