@@ -136,4 +136,5 @@ export interface GrindRegressionResult {
   coffee_id: number;
   roast_date: string;
   grinders: GrindRegressionGrinder[];
+  target_shot_time: number | null;
 }

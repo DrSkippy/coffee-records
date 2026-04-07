@@ -225,6 +225,14 @@ export default function ShotPlannerPage() {
                   )}
                 </Group>
               )}
+              {regression?.target_shot_time != null && (
+                <Group align="baseline" gap="xs">
+                  <Text size="sm" c="dimmed">Target shot time:</Text>
+                  <Text fw={700} size="xl">
+                    {regression.target_shot_time.toFixed(1)}s
+                  </Text>
+                </Group>
+              )}
             </Stack>
           </Card>
 

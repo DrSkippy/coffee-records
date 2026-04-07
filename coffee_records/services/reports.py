@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from coffee_records.models.coffee import Coffee
 from coffee_records.models.equipment import BrewingDevice, Grinder
-from coffee_records.models.shot import Shot
+from coffee_records.models.shot import DrinkType, Shot
 
 logger = logging.getLogger(__name__)
 
@@ -547,8 +547,30 @@ def grind_regression(
     if not result_grinders:
         raise ValueError("insufficient_data")
 
+    # Target shot time: average of (extraction_time + extraction_delta) across all
+    # espresso-based shots (americano, latte, cappuccino) for this coffee.
+    espresso_shots = (
+        session.query(Shot.extraction_time, Shot.extraction_delta)
+        .filter(
+            Shot.coffee_id == coffee_id,
+            Shot.extraction_time.isnot(None),
+            Shot.drink_type.in_(
+                [DrinkType.americano, DrinkType.latte, DrinkType.cappuccino]
+            ),
+        )
+        .all()
+    )
+    target_shot_time: float | None = None
+    if espresso_shots:
+        totals = [
+            row.extraction_time + (row.extraction_delta or 0.0)
+            for row in espresso_shots
+        ]
+        target_shot_time = round(sum(totals) / len(totals), 1)
+
     return {
         "coffee_id": coffee_id,
         "roast_date": roast_date.isoformat(),
         "grinders": result_grinders,
+        "target_shot_time": target_shot_time,
     }
