@@ -1,6 +1,6 @@
 export type RoastLevel = "light" | "medium" | "dark";
 export type GrinderType = "flat" | "conical" | "blade";
-export type DrinkType = "americano" | "latte" | "cappuccino" | "drip";
+export type DrinkType = "americano" | "latte" | "cappuccino" | "drip" | "aeropress";
 export type Maker = string;
 
 export interface Coffee {
@@ -137,4 +137,50 @@ export interface GrindRegressionResult {
   roast_date: string;
   grinders: GrindRegressionGrinder[];
   target_shot_time: number | null;
+}
+
+export interface CoffeeInterceptItem {
+  coffee_id: number;
+  coffee_name: string | null;
+  intercept: number;
+}
+
+export interface TargetTimeItem {
+  coffee_id: number;
+  target_shot_time: number | null;
+}
+
+export interface GrindModelPoint {
+  shot_id: number;
+  date: string;
+  age_days: number;
+  temp_offset: number;
+  grind: number;
+  grind_str: string;
+  grind_predicted: number;
+  grind_predicted_str: string;
+}
+
+export interface GrindModelTraining {
+  training_id: number;
+  grinder_id: number;
+  grinder_label: string;
+  trained_at: string;
+  n_shots_available: number;
+  n_shots_used: number;
+  n_coffees: number;
+  n_iterations: number;
+  converged: boolean;
+  r_squared: number | null;
+  a0: number;
+  a2: number;
+  a3: number;
+  a4: number;
+  a5: number;
+  coffee_intercepts: CoffeeInterceptItem[];
+}
+
+export interface GrindModelParamsResult extends GrindModelTraining {
+  points: GrindModelPoint[];
+  target_times: TargetTimeItem[];
 }

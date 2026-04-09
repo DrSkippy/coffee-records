@@ -2,6 +2,8 @@ import type {
   ByCoffeeReport,
   DoseYieldPoint,
   ExtractionPoint,
+  GrindModelParamsResult,
+  GrindModelTraining,
   GrindRegressionResult,
   ShotsPerDayPoint,
 } from "../types";
@@ -33,5 +35,24 @@ export const getGrindRegression = (coffeeId: number, grinderId?: number) =>
   api
     .get<GrindRegressionResult>("/reports/grind-regression", {
       params: { coffee_id: coffeeId, ...(grinderId ? { grinder_id: grinderId } : {}) },
+    })
+    .then((r) => r.data);
+
+export const trainGrindModel = (grinderId: number) =>
+  api
+    .post<GrindModelTraining>(`/reports/grind-model/train?grinder_id=${grinderId}`)
+    .then((r) => r.data);
+
+export const getGrindModelParams = (
+  grinderId: number,
+  opts: { trainingId?: number; asOf?: string } = {}
+) =>
+  api
+    .get<GrindModelParamsResult>("/reports/grind-model/params", {
+      params: {
+        grinder_id: grinderId,
+        ...(opts.trainingId ? { training_id: opts.trainingId } : {}),
+        ...(opts.asOf ? { as_of: opts.asOf } : {}),
+      },
     })
     .then((r) => r.data);

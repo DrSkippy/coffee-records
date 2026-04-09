@@ -16,6 +16,7 @@ class DrinkType(str, enum.Enum):
     latte = "latte"
     cappuccino = "cappuccino"
     drip = "drip"
+    aeropress = "aeropress"
 
 
 class Shot(Base):

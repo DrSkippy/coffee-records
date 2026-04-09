@@ -134,12 +134,13 @@ Run these once against an existing database when upgrading:
 | `bin/add_grind_setting_column.py` | Adds `shots.grind_setting` |
 | `bin/migrate_maker_to_varchar.py` | Converts `shots.maker` from enum to VARCHAR |
 | `bin/add_extraction_delta_column.py` | Adds `shots.extraction_delta`; backfills −5 for "over extracted" notes, +5 for "under extracted" |
+| `bin/migrate_grind_model.py` | Adds `aeropress` to `drink_type` enum; creates `grind_model_trainings` and `grind_model_coffee_intercepts` tables |
 
 ```bash
 poetry run python bin/<script>.py
 ```
 
-All migration scripts are idempotent (`ADD COLUMN IF NOT EXISTS`, `DROP TYPE IF EXISTS`).
+All migration scripts are idempotent (`ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`, `ADD VALUE IF NOT EXISTS`).
 
 ---
 
@@ -179,7 +180,7 @@ Form to log a shot. All fields except date and maker are optional. The form open
 | Date | Today | |
 | Maker | Scott | Free-text with Scott / Sara as suggestions |
 | Coffee | Most recently entered | Searchable select from the coffees list |
-| Drink type | americano | americano / latte / cappuccino / drip |
+| Drink type | americano | americano / latte / cappuccino / drip / aeropress |
 | Grinder | Mazzer (matched by name) | Searchable select |
 | Machine | ECM Synchronika (matched by name) | Searchable select |
 | Scale | Normcore (matched by name) | Searchable select |
@@ -213,7 +214,28 @@ Three tabs — **Grinders**, **Machines**, and **Scales** — each with full cre
 
 ### Shot Planner
 
-Regression-based grind setting recommendations. Select a coffee and optionally a grinder; the planner uses the historical grind regression model to suggest a starting setting based on days since roast and grinder temperature.
+Grind setting recommendations powered by a multivariate model trained on your shot history. Select a grinder and coffee, enter the current grinder temperature, and the planner predicts the recommended starting setting.
+
+The model fits the following equation per grinder using alternating OLS:
+
+```
+grind = c(coffee) + a0·(temp−65) + a2·(time−target) + a3·(dose−20) + a4·age_days + a5·(yield−2·dose)
+```
+
+With the shot planner assumptions (dose=20 g, time=target, yield=40 g), the dose/time/yield terms zero out and the prediction reduces to:
+
+```
+grind = c(coffee) + a0·(temp−65) + a4·age_days
+```
+
+**Plots:**
+- **Grind vs Days since Roast** — scatter of actual and predicted settings across all shots for the grinder; a coffee-specific fit line when a coffee is selected
+- **Temperature Sensitivity** — predicted grind across ±5 °F of the entered temperature, with the current reading highlighted
+- **Coffee Intercept Distribution** — histogram of per-coffee baseline settings c(coffee) across all coffees in the model, with the selected coffee's bin highlighted
+
+The **Retrain Model** button triggers a fresh training run (warm-started from the previous run) and immediately refreshes all plots.
+
+Training uses only americano, latte, and cappuccino shots. Drip and aeropress shots are excluded, as are the first day of shots for each coffee bag (dialing-in shots).
 
 ### API
 
@@ -343,7 +365,7 @@ Requests without a valid key return `401 Unauthorized`. Authentication is disabl
 }
 ```
 
-`drink_type` is one of `americano`, `latte`, `cappuccino`, `drip`, or `null`.
+`drink_type` is one of `americano`, `latte`, `cappuccino`, `drip`, `aeropress`, or `null`.
 
 ### Equipment
 
@@ -377,6 +399,30 @@ All report endpoints accept optional query parameters: `date_from`, `date_to` (I
 | `GET` | `/api/reports/by-coffee/<id>` | Aggregate stats + shot list for one coffee |
 | `GET` | `/api/reports/grind-regression` | Per-grinder regression coefficients, R², and data points (`coffee_id` required; needs ≥ 3 shots) |
 | `GET` | `/api/reports/target-shot-time` | `{"target_shot_time": 29.3, "n_shots": 12, ...}` — WMA of extraction time across espresso shots (`coffee_id` required) |
+
+### Grind Model
+
+A multivariate per-grinder model fitted with alternating OLS over all espresso shot history. Requires the `grind_model_trainings` and `grind_model_coffee_intercepts` tables (created by `bin/migrate_grind_model.py`).
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/reports/grind-model/train` | Fit or re-fit the model for a grinder. Warm-starts from the previous training. Returns 201 with the training record. `grinder_id` required. |
+| `GET` | `/api/reports/grind-model/params` | Retrieve model parameters, per-coffee intercepts, target shot times, and data points for plotting. `grinder_id` required. Optional: `training_id` (specific run) or `as_of` (ISO date — latest training on or before that date). |
+
+**`/train` response** includes `training_id`, all coefficients (`a0`, `a2`–`a5`), `coffee_intercepts`, `r_squared`, `n_shots_used`, `n_shots_available`, `converged`, and `n_iterations`.
+
+**`/params` response** extends the training record with `points` (per-shot actual vs predicted grind for plotting) and `target_times` (per-coffee WMA target shot time).
+
+```bash
+# Train
+curl -X POST "http://localhost:8181/api/reports/grind-model/train?grinder_id=1"
+
+# Fetch latest params
+curl "http://localhost:8181/api/reports/grind-model/params?grinder_id=1"
+
+# Fetch params as of a specific date
+curl "http://localhost:8181/api/reports/grind-model/params?grinder_id=1&as_of=2026-03-01"
+```
 
 ---
 

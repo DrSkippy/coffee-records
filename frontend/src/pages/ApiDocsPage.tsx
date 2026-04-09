@@ -410,6 +410,61 @@ const sections: Section[] = [
       },
     ],
   },
+  {
+    label: "Grind Model",
+    value: "grind-model",
+    endpoints: [
+      {
+        method: "POST",
+        path: "/api/reports/grind-model/train",
+        description:
+          "Fit (or re-fit) the multivariate grind model for a grinder using alternating OLS. " +
+          "The model equation is: grind = a0·(temp−65) + a2·(time−target) + a3·(dose−20) + " +
+          "a4·age_days + a5·(yield−2·dose) + c(coffee). " +
+          "Training uses americano, latte, and cappuccino shots only; excludes first-day shots per coffee. " +
+          "Warm-starts intercepts from the most recent prior training. " +
+          "Returns 201 with the training record on success.",
+        params: [
+          {
+            name: "grinder_id",
+            type: "integer",
+            required: true,
+            description: "Grinder to train the model for",
+          },
+        ],
+        curl: `curl -X POST "${BASE}/api/reports/grind-model/train?grinder_id=1"`,
+      },
+      {
+        method: "GET",
+        path: "/api/reports/grind-model/params",
+        description:
+          "Retrieve grind model parameters for a grinder. Returns the most recent training by default. " +
+          "Includes all model coefficients, per-coffee intercepts, per-coffee target shot times, " +
+          "and a data-point array for plotting. Use training_id or as_of to retrieve a historical snapshot.",
+        params: [
+          {
+            name: "grinder_id",
+            type: "integer",
+            required: true,
+            description: "Grinder whose model to fetch",
+          },
+          {
+            name: "training_id",
+            type: "integer",
+            required: false,
+            description: "Return this specific training run",
+          },
+          {
+            name: "as_of",
+            type: "date (ISO)",
+            required: false,
+            description: "Return the most recent training on or before this date",
+          },
+        ],
+        curl: `curl "${BASE}/api/reports/grind-model/params?grinder_id=1"`,
+      },
+    ],
+  },
 ];
 
 function EndpointRow({ ep }: { ep: Endpoint }) {

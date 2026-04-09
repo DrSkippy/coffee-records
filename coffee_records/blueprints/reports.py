@@ -9,6 +9,8 @@ from coffee_records.services.reports import (
     by_coffee,
     dose_yield_over_time,
     extraction_trends,
+    fit_grind_model,
+    get_grind_model_params,
     grind_regression,
     shots_per_day,
     target_shot_time_wma,
@@ -159,6 +161,87 @@ def report_target_shot_time() -> object:
                 "n_shots": n_shots,
             }
         )
+
+
+@reports_bp.post("/grind-model/train")
+def report_grind_model_train() -> object:
+    """Fit (or re-fit) the multivariate grind model for a grinder.
+
+    Warm-starts from the most recent existing training for this grinder.
+    New coffees are initialized to a mid-range Mazzer setting (85.0).
+
+    Query params:
+        grinder_id (required): Grinder to train for.
+
+    Returns:
+        JSON GrindModelTrainingResponse with 201 status.
+    """
+    raw = request.args.get("grinder_id")
+    if not raw:
+        return jsonify({"error": "grinder_id required"}), 400
+    try:
+        grinder_id = int(raw)
+    except ValueError:
+        return jsonify({"error": "grinder_id must be an integer"}), 400
+
+    with get_session() as session:
+        try:
+            result = fit_grind_model(session, grinder_id)
+            return jsonify(result), 201
+        except ValueError as exc:
+            msg = str(exc)
+            if msg == "grinder_not_found":
+                return jsonify({"error": "grinder not found"}), 404
+            if msg == "insufficient_data":
+                return jsonify({"error": "fewer than 3 usable shots after filtering"}), 422
+            raise
+
+
+@reports_bp.get("/grind-model/params")
+def report_grind_model_params() -> object:
+    """Retrieve grind model parameters for a grinder.
+
+    Returns the most recent training by default. Use training_id or as_of
+    to retrieve a specific historical snapshot.
+
+    Query params:
+        grinder_id (required): Grinder whose model to fetch.
+        training_id (optional): Return this specific training run.
+        as_of (optional): ISO date — return the most recent training on or
+                          before this date.
+
+    Returns:
+        JSON GrindModelParamsResponse including data points for plotting.
+    """
+    raw = request.args.get("grinder_id")
+    if not raw:
+        return jsonify({"error": "grinder_id required"}), 400
+    try:
+        grinder_id = int(raw)
+    except ValueError:
+        return jsonify({"error": "grinder_id must be an integer"}), 400
+
+    training_id = int(t) if (t := request.args.get("training_id")) else None
+
+    as_of = None
+    if ao := request.args.get("as_of"):
+        try:
+            from datetime import date as _date
+            as_of = _date.fromisoformat(ao)
+        except ValueError:
+            return jsonify({"error": "as_of must be an ISO date (YYYY-MM-DD)"}), 400
+
+    with get_session() as session:
+        try:
+            result = get_grind_model_params(session, grinder_id, training_id, as_of)
+            return jsonify(result)
+        except ValueError as exc:
+            msg = str(exc)
+            if msg == "grinder_not_found":
+                return jsonify({"error": "grinder not found"}), 404
+            if msg == "no_training":
+                return jsonify({"error": "no trained model found for this grinder"}), 404
+            raise
 
 
 @reports_bp.get("/by-coffee/<int:coffee_id>")
