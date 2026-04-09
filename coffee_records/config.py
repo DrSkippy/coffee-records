@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class AppConfig(BaseModel):
@@ -13,6 +13,13 @@ class AppConfig(BaseModel):
 
     debug: bool = False
     secret_key: str = "changeme"
+    api_key: str = ""
+
+    @field_validator("api_key", mode="before")
+    @classmethod
+    def env_override(cls, v: str) -> str:
+        """Environment variable API_KEY takes priority over config.yaml value."""
+        return os.environ.get("API_KEY", v)
 
 
 class DatabaseConfig(BaseModel):

@@ -7,6 +7,7 @@ import CoffeesPage from "./pages/CoffeesPage";
 import EquipmentPage from "./pages/EquipmentPage";
 import ReportsPage from "./pages/ReportsPage";
 import ShotPlannerPage from "./pages/ShotPlannerPage";
+import ApiDocsPage from "./pages/ApiDocsPage";
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
         <Route path="/equipment" element={<EquipmentPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/planner" element={<ShotPlannerPage />} />
+        <Route path="/api-docs" element={<ApiDocsPage />} />
       </Routes>
     </AppLayout>
   );

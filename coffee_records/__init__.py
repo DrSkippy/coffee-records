@@ -4,7 +4,7 @@ import logging
 import logging.config
 from pathlib import Path
 
-from flask import Flask, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory
 
 from coffee_records.config import Config, load_config
 from coffee_records.database import init_db
@@ -35,6 +35,20 @@ def create_app(
     # Initialize database
     url = database_url if database_url is not None else config.database.get_url()
     init_db(url, pool_size=config.database.pool_size)
+
+    # API key authentication for all /api/* routes
+    @app.before_request
+    def check_api_key() -> object | None:
+        """Enforce X-API-Key header on /api/* routes when api_key is configured."""
+        if request.path.startswith("/api/"):
+            required_key = config.app.api_key
+            if required_key:
+                provided = request.headers.get("X-API-Key") or request.args.get(
+                    "api_key"
+                )
+                if provided != required_key:
+                    return jsonify({"error": "Unauthorized"}), 401
+        return None
 
     # Register global error handlers
     from pydantic import ValidationError

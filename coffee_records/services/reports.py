@@ -402,6 +402,54 @@ def _solve_3x3(A: list[list[float]], b: list[float]) -> list[float]:
     return x
 
 
+def target_shot_time_wma(
+    session: Session,
+    coffee_id: int,
+    grinder_id: int | None = None,
+    device_id: int | None = None,
+) -> tuple[float | None, int]:
+    """Weighted moving average of (extraction_time + extraction_delta) for espresso shots.
+
+    Shots are ordered oldest-first (i=0) to most recent (i=N-1), giving higher
+    weight to recent shots.  Formula: wma = Σ(i+1)(tᵢ+dtᵢ) / Σ(i+1) where
+    the denominator equals N*(N+1)/2.
+
+    Args:
+        session: SQLAlchemy session.
+        coffee_id: Filter to shots for this coffee bag.
+        grinder_id: Optional filter by grinder.
+        device_id: Optional filter by brewing device.
+
+    Returns:
+        Tuple of (wma rounded to 1 decimal place, shot count used).
+        wma is None when no qualifying shots exist.
+    """
+    query = session.query(Shot.extraction_time, Shot.extraction_delta).filter(
+        Shot.coffee_id == coffee_id,
+        Shot.extraction_time.isnot(None),
+        Shot.drink_type.in_(
+            [DrinkType.americano, DrinkType.latte, DrinkType.cappuccino]
+        ),
+    )
+    if grinder_id is not None:
+        query = query.filter(Shot.grinder_id == grinder_id)
+    if device_id is not None:
+        query = query.filter(Shot.device_id == device_id)
+
+    rows = query.order_by(Shot.date.asc(), Shot.created_at.asc()).all()
+
+    if not rows:
+        return None, 0
+
+    weighted_sum = sum(
+        (i + 1) * (row.extraction_time + (row.extraction_delta or 0.0))
+        for i, row in enumerate(rows)
+    )
+    n = len(rows)
+    denominator = n * (n + 1) / 2
+    return round(weighted_sum / denominator, 1), n
+
+
 def grind_regression(
     session: Session,
     coffee_id: int,
@@ -547,26 +595,9 @@ def grind_regression(
     if not result_grinders:
         raise ValueError("insufficient_data")
 
-    # Target shot time: average of (extraction_time + extraction_delta) across all
-    # espresso-based shots (americano, latte, cappuccino) for this coffee.
-    espresso_shots = (
-        session.query(Shot.extraction_time, Shot.extraction_delta)
-        .filter(
-            Shot.coffee_id == coffee_id,
-            Shot.extraction_time.isnot(None),
-            Shot.drink_type.in_(
-                [DrinkType.americano, DrinkType.latte, DrinkType.cappuccino]
-            ),
-        )
-        .all()
-    )
-    target_shot_time: float | None = None
-    if espresso_shots:
-        totals = [
-            row.extraction_time + (row.extraction_delta or 0.0)
-            for row in espresso_shots
-        ]
-        target_shot_time = round(sum(totals) / len(totals), 1)
+    # Target shot time: weighted moving average of (extraction_time + extraction_delta)
+    # across all espresso-based shots for this coffee (recent shots weighted higher).
+    target_shot_time, _ = target_shot_time_wma(session, coffee_id)
 
     return {
         "coffee_id": coffee_id,

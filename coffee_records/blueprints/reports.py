@@ -11,6 +11,7 @@ from coffee_records.services.reports import (
     extraction_trends,
     grind_regression,
     shots_per_day,
+    target_shot_time_wma,
 )
 
 reports_bp = Blueprint("reports", __name__, url_prefix="/api/reports")
@@ -122,6 +123,42 @@ def report_grind_regression() -> object:
             if msg == "insufficient_data":
                 return jsonify({"error": "fewer than 3 usable data points"}), 422
             raise
+
+
+@reports_bp.get("/target-shot-time")
+def report_target_shot_time() -> object:
+    """Weighted moving average target shot time for a coffee/grinder/device combo.
+
+    Query params:
+        coffee_id (required): Filter to shots for this coffee bag.
+        grinder_id (optional): Further filter by grinder.
+        device_id (optional): Further filter by brewing device.
+
+    Returns:
+        JSON with target_shot_time (seconds, 1 decimal), n_shots, and filter echo.
+    """
+    raw = request.args.get("coffee_id")
+    if not raw:
+        return jsonify({"error": "coffee_id required"}), 400
+    try:
+        coffee_id = int(raw)
+    except ValueError:
+        return jsonify({"error": "coffee_id must be an integer"}), 400
+
+    grinder_id = int(g) if (g := request.args.get("grinder_id")) else None
+    device_id = int(d) if (d := request.args.get("device_id")) else None
+
+    with get_session() as session:
+        wma, n_shots = target_shot_time_wma(session, coffee_id, grinder_id, device_id)
+        return jsonify(
+            {
+                "coffee_id": coffee_id,
+                "grinder_id": grinder_id,
+                "device_id": device_id,
+                "target_shot_time": wma,
+                "n_shots": n_shots,
+            }
+        )
 
 
 @reports_bp.get("/by-coffee/<int:coffee_id>")

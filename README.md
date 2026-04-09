@@ -75,6 +75,7 @@ npm run dev           # Vite dev server on :5173, proxies /api to :5000
 app:
   debug: false
   secret_key: "changeme"     # change in production
+  api_key: ""                # leave empty to disable auth; set API_KEY env var to enable
 
 database:
   host: "192.168.1.91"
@@ -109,6 +110,7 @@ Optional overrides (used by `docker-compose.yml`):
 ```bash
 export POSTGRES_HOST=192.168.1.91
 export POSTGRES_DATABASE=coffee-records
+export API_KEY=your-secret-key   # enforces X-API-Key auth on all /api/* routes
 ```
 
 ---
@@ -209,6 +211,14 @@ Three tabs — **Grinders**, **Machines**, and **Scales** — each with full cre
 **Machines:** make, model, type (free text), warmup time (minutes), notes.
 **Scales:** make, model, notes.
 
+### Shot Planner
+
+Regression-based grind setting recommendations. Select a coffee and optionally a grinder; the planner uses the historical grind regression model to suggest a starting setting based on days since roast and grinder temperature.
+
+### API
+
+Interactive API reference covering all endpoints, parameters, and curl examples. Includes a lookup panel for resolving coffee and equipment IDs before calling filtered endpoints.
+
 ### Reports
 
 Charts covering a selectable date range (last 7 / 30 / 90 days). All charts can be filtered simultaneously by coffee, grinder, and/or brewing machine.
@@ -226,7 +236,18 @@ Charts covering a selectable date range (last 7 / 30 / 90 days). All charts can 
 
 Base URL: `/api`
 
-All endpoints consume and produce `application/json` unless noted.
+All endpoints consume and produce `application/json` unless noted. Full interactive documentation is available in the app under **API** in the sidebar.
+
+### Authentication
+
+When the `API_KEY` environment variable is set, every `/api/*` request must include a valid key via one of:
+
+```
+X-API-Key: <key>          # header
+?api_key=<key>            # query parameter
+```
+
+Requests without a valid key return `401 Unauthorized`. Authentication is disabled when `API_KEY` is unset or empty.
 
 ### Health & version
 
@@ -354,6 +375,8 @@ All report endpoints accept optional query parameters: `date_from`, `date_to` (I
 | `GET` | `/api/reports/extraction-trends` | `[{"date": "...", "shot_id": 1, "extraction_time": 28.0, "device_id": 1, "device_label": "ECM Synchronika"}]` |
 | `GET` | `/api/reports/dose-yield` | `[{"date": "...", "shot_id": 1, "dose_weight": 18.5, "final_weight": 37.2, "ratio": 2.011, "device_id": 1, "device_label": "ECM Synchronika"}]` |
 | `GET` | `/api/reports/by-coffee/<id>` | Aggregate stats + shot list for one coffee |
+| `GET` | `/api/reports/grind-regression` | Per-grinder regression coefficients, R², and data points (`coffee_id` required; needs ≥ 3 shots) |
+| `GET` | `/api/reports/target-shot-time` | `{"target_shot_time": 29.3, "n_shots": 12, ...}` — WMA of extraction time across espresso shots (`coffee_id` required) |
 
 ---
 

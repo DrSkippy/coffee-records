@@ -10,6 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_HOST: ${POSTGRES_HOST:-192.168.1.91}
       POSTGRES_DATABASE: ${POSTGRES_DATABASE:-coffee-records}
+      API_KEY: ${API_KEY:-}
     volumes:
       - /var/www/html/resources/coffee:/resources
     networks:
@@ -17,4 +18,3 @@ services:
 networks:
   coffee-net:
     driver: bridge
-
