@@ -16,6 +16,7 @@ from coffee_records.schemas.shot import ShotCreate, ShotResponse, ShotUpdate
 shots_bp = Blueprint("shots", __name__, url_prefix="/api/shots")
 
 ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".mov", ".webm", ".avi", ".mkv"}
+ALLOWED_TELEMETRY_EXTENSIONS = {".json"}
 
 
 def _cfg() -> Config:
@@ -51,6 +52,35 @@ def _delete_video_file(filename: str, cfg: Config) -> None:
         cfg: Application config.
     """
     path = Path(cfg.uploads.coffee_image_dir) / filename
+    if path.exists():
+        path.unlink()
+
+
+def _save_telemetry(file: FileStorage, cfg: Config) -> str:
+    """Save an uploaded telemetry JSON and return its filename.
+
+    Args:
+        file: The uploaded file object.
+        cfg: Application config.
+
+    Returns:
+        The saved filename (UUID-based).
+    """
+    filename = f"{uuid.uuid4()}.json"
+    dest = Path(cfg.uploads.coffee_image_dir) / "telemetry"
+    dest.mkdir(parents=True, exist_ok=True)
+    file.save(dest / filename)
+    return filename
+
+
+def _delete_telemetry_file(filename: str, cfg: Config) -> None:
+    """Delete a telemetry file from disk if it exists.
+
+    Args:
+        filename: The filename to delete.
+        cfg: Application config.
+    """
+    path = Path(cfg.uploads.coffee_image_dir) / "telemetry" / filename
     if path.exists():
         path.unlink()
 
@@ -195,6 +225,8 @@ def delete_shot(shot_id: int) -> object:
             return jsonify({"error": "Shot not found"}), 404
         if shot.video_filename:
             _delete_video_file(shot.video_filename, _cfg())
+        if shot.telemetry_filename:
+            _delete_telemetry_file(shot.telemetry_filename, _cfg())
         session.delete(shot)
         session.commit()
         return "", 204
@@ -247,6 +279,59 @@ def delete_shot_video(shot_id: int) -> object:
         if shot.video_filename:
             _delete_video_file(shot.video_filename, cfg)
             shot.video_filename = None
+            session.commit()
+        loaded = _load_shot(session, shot_id)
+        assert loaded is not None
+        return jsonify(ShotResponse.from_orm_shot(loaded).model_dump(mode="json"))
+
+
+@shots_bp.post("/<int:shot_id>/telemetry")
+def upload_shot_telemetry(shot_id: int) -> object:
+    """Upload a telemetry JSON for a shot.
+
+    Args:
+        shot_id: Shot primary key.
+
+    Returns:
+        JSON updated ShotResponse or 400/404.
+    """
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"error": "Empty filename"}), 400
+    cfg = _cfg()
+    with get_session() as session:
+        shot = session.get(Shot, shot_id)
+        if shot is None:
+            return jsonify({"error": "Shot not found"}), 404
+        if shot.telemetry_filename:
+            _delete_telemetry_file(shot.telemetry_filename, cfg)
+        shot.telemetry_filename = _save_telemetry(file, cfg)
+        session.commit()
+        loaded = _load_shot(session, shot_id)
+        assert loaded is not None
+        return jsonify(ShotResponse.from_orm_shot(loaded).model_dump(mode="json"))
+
+
+@shots_bp.delete("/<int:shot_id>/telemetry")
+def delete_shot_telemetry(shot_id: int) -> object:
+    """Remove the telemetry file for a shot.
+
+    Args:
+        shot_id: Shot primary key.
+
+    Returns:
+        JSON updated ShotResponse or 404.
+    """
+    cfg = _cfg()
+    with get_session() as session:
+        shot = session.get(Shot, shot_id)
+        if shot is None:
+            return jsonify({"error": "Shot not found"}), 404
+        if shot.telemetry_filename:
+            _delete_telemetry_file(shot.telemetry_filename, cfg)
+            shot.telemetry_filename = None
             session.commit()
         loaded = _load_shot(session, shot_id)
         assert loaded is not None

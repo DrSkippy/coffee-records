@@ -83,6 +83,7 @@ class ShotResponse(BaseModel):
     grind_setting: str | None
     notes: str | None
     video_filename: str | None
+    telemetry_filename: str | None
     grinder_id: int | None
     grinder_label: str | None
     device_id: int | None
@@ -134,6 +135,7 @@ class ShotResponse(BaseModel):
             grind_setting=s.grind_setting,
             notes=s.notes,
             video_filename=s.video_filename,
+            telemetry_filename=s.telemetry_filename,
             grinder_id=s.grinder_id,
             grinder_label=grinder_label,
             device_id=s.device_id,

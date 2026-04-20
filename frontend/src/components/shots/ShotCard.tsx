@@ -1,12 +1,15 @@
 import { ActionIcon, Badge, Box, Card, Group, Stack, Text, Tooltip } from "@mantine/core";
-import { IconPencil, IconVideo } from "@tabler/icons-react";
+import { IconChartLine, IconPencil, IconVideo } from "@tabler/icons-react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { Shot } from "../../types";
+import TelemetryModal from "./TelemetryModal";
 
 const VIDEO_BASE_URL = "https://resources.drskippy.app/coffee";
 
 export default function ShotCard({ shot }: { shot: Shot }) {
   const navigate = useNavigate();
+  const [telemetryOpen, setTelemetryOpen] = useState(false);
   const flags = [
     shot.wedge && "Wedge",
     shot.shaker && "Shaker",
@@ -34,6 +37,17 @@ export default function ShotCard({ shot }: { shot: Shot }) {
                 size="sm"
               >
                 <IconVideo size={16} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          {shot.telemetry_filename && (
+            <Tooltip label="Shot telemetry">
+              <ActionIcon
+                variant="subtle"
+                size="sm"
+                onClick={() => setTelemetryOpen(true)}
+              >
+                <IconChartLine size={16} />
               </ActionIcon>
             </Tooltip>
           )}
@@ -128,6 +142,13 @@ export default function ShotCard({ shot }: { shot: Shot }) {
           </Box>
         )}
       </Group>
+      {shot.telemetry_filename && (
+        <TelemetryModal
+          shot={shot}
+          opened={telemetryOpen}
+          onClose={() => setTelemetryOpen(false)}
+        />
+      )}
     </Card>
   );
 }

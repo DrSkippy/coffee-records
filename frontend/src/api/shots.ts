@@ -32,3 +32,12 @@ export const uploadShotVideo = (id: number, file: File) => {
 
 export const deleteShotVideo = (id: number) =>
   api.delete<Shot>(`/shots/${id}/video`).then((r) => r.data);
+
+export const uploadShotTelemetry = (id: number, file: File) => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post<Shot>(`/shots/${id}/telemetry`, form).then((r) => r.data);
+};
+
+export const deleteShotTelemetry = (id: number) =>
+  api.delete<Shot>(`/shots/${id}/telemetry`).then((r) => r.data);

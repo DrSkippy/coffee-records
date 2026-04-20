@@ -189,7 +189,7 @@ const sections: Section[] = [
       {
         method: "DELETE",
         path: "/api/shots/:id",
-        description: "Delete a shot. Also removes associated video file if present.",
+        description: "Delete a shot. Also removes associated video and telemetry files if present.",
         curl: `curl -X DELETE ${BASE}/api/shots/42`,
       },
       {
@@ -203,6 +203,18 @@ const sections: Section[] = [
         path: "/api/shots/:id/video",
         description: "Remove the video for a shot.",
         curl: `curl -X DELETE ${BASE}/api/shots/42/video`,
+      },
+      {
+        method: "POST",
+        path: "/api/shots/:id/telemetry",
+        description: "Upload a Beanconqueror flow-profile JSON (multipart/form-data, field: file). Replaces existing telemetry.",
+        curl: `curl -X POST ${BASE}/api/shots/42/telemetry \\\n  -F "file=@flowprofile.json"`,
+      },
+      {
+        method: "DELETE",
+        path: "/api/shots/:id/telemetry",
+        description: "Remove the telemetry file for a shot.",
+        curl: `curl -X DELETE ${BASE}/api/shots/42/telemetry`,
       },
     ],
   },

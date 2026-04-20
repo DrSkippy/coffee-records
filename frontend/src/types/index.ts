@@ -66,6 +66,7 @@ export interface Shot {
   grind_setting: string | null;
   notes: string | null;
   video_filename: string | null;
+  telemetry_filename: string | null;
   grinder_id: number | null;
   grinder_label: string | null;
   device_id: number | null;

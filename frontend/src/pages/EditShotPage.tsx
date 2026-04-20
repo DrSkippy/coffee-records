@@ -15,7 +15,7 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
-import { IconVideo } from "@tabler/icons-react";
+import { IconChartLine, IconVideo } from "@tabler/icons-react";
 import { DateInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
@@ -24,10 +24,11 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getCoffees } from "../api/coffees";
 import { getBrewingDevices, getGrinders, getScales } from "../api/equipment";
-import { deleteShotVideo, getShot, updateShot, uploadShotVideo } from "../api/shots";
+import { deleteShotTelemetry, deleteShotVideo, getShot, updateShot, uploadShotTelemetry, uploadShotVideo } from "../api/shots";
 import type { BrewingDevice, Coffee, Grinder, Scale } from "../types";
 
 const VIDEO_BASE_URL = "https://resources.drskippy.app/coffee";
+const TELEMETRY_BASE_URL = "https://resources.drskippy.app/coffee/telemetry";
 
 const posToValue = (pos: number): number => {
   if (pos === 0) return 0;
@@ -85,6 +86,9 @@ export default function EditShotPage() {
   const [existingVideo, setExistingVideo] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [removeVideo, setRemoveVideo] = useState(false);
+  const [existingTelemetry, setExistingTelemetry] = useState<string | null>(null);
+  const [telemetryFile, setTelemetryFile] = useState<File | null>(null);
+  const [removeTelemetry, setRemoveTelemetry] = useState(false);
 
   const form = useForm<FormValues>({
     initialValues: {
@@ -126,6 +130,7 @@ export default function EditShotPage() {
         setDevices(d);
         setScales(s);
         setExistingVideo(shot.video_filename);
+        setExistingTelemetry(shot.telemetry_filename);
         const delta = shot.extraction_delta ?? 0;
         setSliderPosition(valueToPos(delta));
         form.setValues({
@@ -201,6 +206,11 @@ export default function EditShotPage() {
         await deleteShotVideo(shotId);
       } else if (videoFile) {
         await uploadShotVideo(shotId, videoFile);
+      }
+      if (removeTelemetry) {
+        await deleteShotTelemetry(shotId);
+      } else if (telemetryFile) {
+        await uploadShotTelemetry(shotId, telemetryFile);
       }
       notifications.show({ message: "Shot updated!", color: "green" });
       navigate("/shots");
@@ -472,6 +482,66 @@ export default function EditShotPage() {
                   leftSection={<IconVideo size={16} />}
                   value={videoFile}
                   onChange={setVideoFile}
+                  clearable
+                />
+              </Stack>
+            )}
+          </Grid.Col>
+          <Grid.Col span={12}>
+            {existingTelemetry && !removeTelemetry ? (
+              <Stack gap={4}>
+                <Text size="sm" fw={500}>
+                  Current Telemetry
+                </Text>
+                <Group gap="xs">
+                  <Anchor
+                    href={`${TELEMETRY_BASE_URL}/${existingTelemetry}`}
+                    target="_blank"
+                    size="sm"
+                  >
+                    <Group gap={4}>
+                      <IconChartLine size={14} />
+                      View JSON
+                    </Group>
+                  </Anchor>
+                  <Button
+                    variant="subtle"
+                    color="red"
+                    size="xs"
+                    onClick={() => setRemoveTelemetry(true)}
+                  >
+                    Remove
+                  </Button>
+                </Group>
+                <FileInput
+                  label="Replace telemetry JSON (optional)"
+                  placeholder="Select Beanconqueror flow profile…"
+                  accept=".json,application/json"
+                  leftSection={<IconChartLine size={16} />}
+                  value={telemetryFile}
+                  onChange={setTelemetryFile}
+                  clearable
+                />
+              </Stack>
+            ) : (
+              <Stack gap={4}>
+                {removeTelemetry && (
+                  <Group gap="xs">
+                    <Text size="sm" c="red">
+                      Telemetry will be removed on save.
+                    </Text>
+                    <Button variant="subtle" size="xs" onClick={() => setRemoveTelemetry(false)}>
+                      Undo
+                    </Button>
+                  </Group>
+                )}
+                <FileInput
+                  label="Telemetry JSON (optional)"
+                  placeholder="Select Beanconqueror flow profile…"
+                  accept=".json,application/json"
+                  leftSection={<IconChartLine size={16} />}
+                  value={telemetryFile}
+                  onChange={setTelemetryFile}
                   clearable
                 />
               </Stack>

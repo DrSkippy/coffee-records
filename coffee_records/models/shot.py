@@ -53,6 +53,7 @@ class Shot(Base):
     grind_setting: Mapped[str | None] = mapped_column(String(50), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     video_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    telemetry_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     grinder_id: Mapped[int | None] = mapped_column(
         ForeignKey("grinders.id"), nullable=True

@@ -14,7 +14,7 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
-import { IconVideo } from "@tabler/icons-react";
+import { IconChartLine, IconVideo } from "@tabler/icons-react";
 import { DateInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
@@ -23,7 +23,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCoffees } from "../api/coffees";
 import { getBrewingDevices, getGrinders, getScales } from "../api/equipment";
-import { createShot, uploadShotVideo } from "../api/shots";
+import { createShot, uploadShotTelemetry, uploadShotVideo } from "../api/shots";
 import type { BrewingDevice, Coffee, Grinder, Scale } from "../types";
 
 const posToValue = (pos: number): number => {
@@ -77,6 +77,7 @@ export default function NewShotPage() {
   const [scales, setScales] = useState<Scale[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [telemetryFile, setTelemetryFile] = useState<File | null>(null);
   const [sliderPosition, setSliderPosition] = useState(0);
 
   useEffect(() => {
@@ -168,6 +169,9 @@ export default function NewShotPage() {
       const shot = await createShot(payload);
       if (videoFile) {
         await uploadShotVideo(shot.id, videoFile);
+      }
+      if (telemetryFile) {
+        await uploadShotTelemetry(shot.id, telemetryFile);
       }
       notifications.show({ message: "Shot logged!", color: "green" });
       navigate("/shots");
@@ -388,6 +392,17 @@ export default function NewShotPage() {
               leftSection={<IconVideo size={16} />}
               value={videoFile}
               onChange={setVideoFile}
+              clearable
+            />
+          </Grid.Col>
+          <Grid.Col span={12}>
+            <FileInput
+              label="Telemetry JSON (optional)"
+              placeholder="Select Beanconqueror flow profile…"
+              accept=".json,application/json"
+              leftSection={<IconChartLine size={16} />}
+              value={telemetryFile}
+              onChange={setTelemetryFile}
               clearable
             />
           </Grid.Col>
