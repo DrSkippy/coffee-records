@@ -23,6 +23,14 @@ const SERIES_CONFIG: SeriesDef[] = [
   { name: "Pressure (bar)", color: "orange.6", key: "pressure", yAxisId: "left" },
 ];
 
+function parseBrewTime(s: string): number {
+  // Beanconqueror uses S.T format where T is tenths of a second, not a
+  // decimal fraction. '0.10' means 1.0 s, not 0.1 s.
+  const dot = s.indexOf(".");
+  if (dot === -1) return parseFloat(s);
+  return parseInt(s.slice(0, dot), 10) + parseInt(s.slice(dot + 1), 10) / 10;
+}
+
 function extractSeries(
   raw: Record<string, unknown[]>
 ): { data: SeriesPoint[]; activeSeries: SeriesDef[] } {
@@ -47,7 +55,7 @@ function extractSeries(
     const arr = sourceArrays[cfg.key] as RawEntry[];
     const map = new Map<number, number>();
     for (const entry of arr) {
-      const t = parseFloat(entry.brew_time as string);
+      const t = parseBrewTime(entry.brew_time as string);
       const v = extractors[cfg.key](entry);
       if (!isNaN(t) && v !== undefined) {
         map.set(t, v);
@@ -154,7 +162,7 @@ export default function TelemetryModal({
             color: s.color,
             yAxisId: s.yAxisId,
           }))}
-          curveType="monotone"
+          curveType="linear"
           withLegend
           withDots={false}
           xAxisLabel="Time (s)"

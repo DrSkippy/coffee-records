@@ -25,7 +25,10 @@ export default function ShotCard({ shot }: { shot: Shot }) {
   return (
     <Card shadow="sm" padding="sm" withBorder mb="xs">
       <Group justify="space-between" mb="xs">
-        <Text fw={600}>{shot.date}</Text>
+        <Group gap={6}>
+          <Text fw={600}>{shot.date}</Text>
+          <Text size="xs" c="dimmed">#{shot.id}</Text>
+        </Group>
         <Group gap="xs">
           {shot.video_filename && (
             <Tooltip label="Watch video">

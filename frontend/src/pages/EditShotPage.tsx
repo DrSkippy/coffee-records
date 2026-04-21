@@ -244,7 +244,10 @@ export default function EditShotPage() {
 
   return (
     <Stack>
-      <Title order={2}>Edit Shot</Title>
+      <Group align="baseline" gap="xs">
+        <Title order={2}>Edit Shot</Title>
+        <Text c="dimmed" size="sm">#{id}</Text>
+      </Group>
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Grid gutter="sm">
           <Grid.Col span={{ base: 12, sm: 6 }}>
