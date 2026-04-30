@@ -7,6 +7,7 @@ import {
   Grid,
   Group,
   NumberInput,
+  Progress,
   Select,
   Slider,
   Stack,
@@ -85,6 +86,7 @@ export default function EditShotPage() {
   const [sliderPosition, setSliderPosition] = useState(0);
   const [existingVideo, setExistingVideo] = useState<string | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoUploadProgress, setVideoUploadProgress] = useState<number | null>(null);
   const [removeVideo, setRemoveVideo] = useState(false);
   const [existingTelemetry, setExistingTelemetry] = useState<string | null>(null);
   const [telemetryFile, setTelemetryFile] = useState<File | null>(null);
@@ -205,7 +207,9 @@ export default function EditShotPage() {
       if (removeVideo) {
         await deleteShotVideo(shotId);
       } else if (videoFile) {
-        await uploadShotVideo(shotId, videoFile);
+        setVideoUploadProgress(0);
+        await uploadShotVideo(shotId, videoFile, setVideoUploadProgress);
+        setVideoUploadProgress(null);
       }
       if (removeTelemetry) {
         await deleteShotTelemetry(shotId);
@@ -215,6 +219,7 @@ export default function EditShotPage() {
       notifications.show({ message: "Shot updated!", color: "green" });
       navigate("/shots");
     } catch {
+      setVideoUploadProgress(null);
       notifications.show({ message: "Failed to update shot", color: "red" });
     } finally {
       setSubmitting(false);
@@ -465,6 +470,9 @@ export default function EditShotPage() {
                   onChange={setVideoFile}
                   clearable
                 />
+                {videoUploadProgress !== null && (
+                  <Progress value={videoUploadProgress} size="sm" animated={videoUploadProgress < 100} />
+                )}
               </Stack>
             ) : (
               <Stack gap={4}>
@@ -487,6 +495,9 @@ export default function EditShotPage() {
                   onChange={setVideoFile}
                   clearable
                 />
+                {videoUploadProgress !== null && (
+                  <Progress value={videoUploadProgress} size="sm" animated={videoUploadProgress < 100} />
+                )}
               </Stack>
             )}
           </Grid.Col>

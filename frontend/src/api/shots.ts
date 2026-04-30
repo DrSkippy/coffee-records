@@ -24,10 +24,20 @@ export const updateShot = (id: number, data: Partial<Shot>) =>
 
 export const deleteShot = (id: number) => api.delete(`/shots/${id}`);
 
-export const uploadShotVideo = (id: number, file: File) => {
+export const uploadShotVideo = (
+  id: number,
+  file: File,
+  onProgress?: (pct: number) => void
+) => {
   const form = new FormData();
   form.append("file", file);
-  return api.post<Shot>(`/shots/${id}/video`, form).then((r) => r.data);
+  return api
+    .post<Shot>(`/shots/${id}/video`, form, {
+      onUploadProgress: (e) => {
+        if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100));
+      },
+    })
+    .then((r) => r.data);
 };
 
 export const deleteShotVideo = (id: number) =>

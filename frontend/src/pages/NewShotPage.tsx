@@ -6,6 +6,7 @@ import {
   Grid,
   Group,
   NumberInput,
+  Progress,
   Select,
   Slider,
   Stack,
@@ -77,6 +78,7 @@ export default function NewShotPage() {
   const [scales, setScales] = useState<Scale[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoUploadProgress, setVideoUploadProgress] = useState<number | null>(null);
   const [telemetryFile, setTelemetryFile] = useState<File | null>(null);
   const [sliderPosition, setSliderPosition] = useState(0);
 
@@ -168,7 +170,9 @@ export default function NewShotPage() {
       };
       const shot = await createShot(payload);
       if (videoFile) {
-        await uploadShotVideo(shot.id, videoFile);
+        setVideoUploadProgress(0);
+        await uploadShotVideo(shot.id, videoFile, setVideoUploadProgress);
+        setVideoUploadProgress(null);
       }
       if (telemetryFile) {
         await uploadShotTelemetry(shot.id, telemetryFile);
@@ -176,6 +180,7 @@ export default function NewShotPage() {
       notifications.show({ message: "Shot logged!", color: "green" });
       navigate("/shots");
     } catch {
+      setVideoUploadProgress(null);
       notifications.show({ message: "Failed to save shot", color: "red" });
     } finally {
       setSubmitting(false);
@@ -385,15 +390,20 @@ export default function NewShotPage() {
             </Group>
           </Grid.Col>
           <Grid.Col span={12}>
-            <FileInput
-              label="Video (optional)"
-              placeholder="Select video file…"
-              accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-matroska"
-              leftSection={<IconVideo size={16} />}
-              value={videoFile}
-              onChange={setVideoFile}
-              clearable
-            />
+            <Stack gap={4}>
+              <FileInput
+                label="Video (optional)"
+                placeholder="Select video file…"
+                accept="video/mp4,video/quicktime,video/webm,video/x-msvideo,video/x-matroska"
+                leftSection={<IconVideo size={16} />}
+                value={videoFile}
+                onChange={setVideoFile}
+                clearable
+              />
+              {videoUploadProgress !== null && (
+                <Progress value={videoUploadProgress} size="sm" animated={videoUploadProgress < 100} />
+              )}
+            </Stack>
           </Grid.Col>
           <Grid.Col span={12}>
             <FileInput
