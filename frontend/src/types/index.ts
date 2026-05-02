@@ -185,3 +185,19 @@ export interface GrindModelParamsResult extends GrindModelTraining {
   points: GrindModelPoint[];
   target_times: TargetTimeItem[];
 }
+
+export interface ShotDefaults {
+  id: number;
+  maker: string;
+  dose_weight: number | null;
+  pre_infusion_time: string | null;
+  extraction_time: number | null;
+  final_weight: number | null;
+  drink_type: DrinkType | null;
+  grinder_temp_before: number | null;
+  wedge: boolean;
+  shaker: boolean;
+  wdt: boolean;
+  flow_taper: boolean;
+  updated_at: string;
+}

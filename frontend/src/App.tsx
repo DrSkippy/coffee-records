@@ -4,6 +4,7 @@ import ShotsPage from "./pages/ShotsPage";
 import NewShotPage from "./pages/NewShotPage";
 import EditShotPage from "./pages/EditShotPage";
 import CoffeesPage from "./pages/CoffeesPage";
+import DefaultsPage from "./pages/DefaultsPage";
 import EquipmentPage from "./pages/EquipmentPage";
 import ReportsPage from "./pages/ReportsPage";
 import ShotPlannerPage from "./pages/ShotPlannerPage";
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/planner" element={<ShotPlannerPage />} />
         <Route path="/api-docs" element={<ApiDocsPage />} />
+        <Route path="/defaults" element={<DefaultsPage />} />
       </Routes>
     </AppLayout>
   );

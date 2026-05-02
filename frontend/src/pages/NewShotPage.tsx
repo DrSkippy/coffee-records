@@ -23,6 +23,7 @@ import dayjs from "dayjs";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getCoffees } from "../api/coffees";
+import { getDefaults } from "../api/defaults";
 import { getBrewingDevices, getGrinders, getScales } from "../api/equipment";
 import { createShot, uploadShotTelemetry, uploadShotVideo } from "../api/shots";
 import type { BrewingDevice, Coffee, Grinder, Scale } from "../types";
@@ -83,12 +84,26 @@ export default function NewShotPage() {
   const [sliderPosition, setSliderPosition] = useState(0);
 
   useEffect(() => {
-    Promise.all([getCoffees(), getGrinders(), getBrewingDevices(), getScales()]).then(
-      ([c, g, d, s]) => {
+    Promise.all([getCoffees(), getGrinders(), getBrewingDevices(), getScales(), getDefaults()]).then(
+      ([c, g, d, s, defaults]) => {
         setCoffees(c);
         setGrinders(g);
         setDevices(d);
         setScales(s);
+
+        form.setValues({
+          maker: defaults.maker,
+          dose_weight: defaults.dose_weight ?? "",
+          pre_infusion_time: defaults.pre_infusion_time ?? "",
+          extraction_time: defaults.extraction_time ?? "",
+          final_weight: defaults.final_weight ?? "",
+          drink_type: defaults.drink_type ?? "",
+          grinder_temp_before: defaults.grinder_temp_before ?? "",
+          wedge: defaults.wedge,
+          shaker: defaults.shaker,
+          wdt: defaults.wdt,
+          flow_taper: defaults.flow_taper,
+        });
 
         // Default to most recently entered coffee (API returns sorted by date desc)
         if (c.length > 0) form.setFieldValue("coffee_id", String(c[0].id));
@@ -114,20 +129,20 @@ export default function NewShotPage() {
   const form = useForm<FormValues>({
     initialValues: {
       date: new Date(),
-      maker: "Scott",
+      maker: "",
       coffee_id: "",
-      dose_weight: 20,
-      pre_infusion_time: "5+5",
-      extraction_time: 28,
+      dose_weight: "",
+      pre_infusion_time: "",
+      extraction_time: "",
       extraction_delta: 0,
       scale_id: "",
-      final_weight: 40,
-      drink_type: "americano",
-      grinder_temp_before: 64,
+      final_weight: "",
+      drink_type: "",
+      grinder_temp_before: "",
       grinder_temp_after: "",
-      wedge: true,
-      shaker: true,
-      wdt: true,
+      wedge: false,
+      shaker: false,
+      wdt: false,
       flow_taper: false,
       grind_setting: "",
       notes: "",

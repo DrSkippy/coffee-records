@@ -60,6 +60,7 @@ def create_app(
 
     # Register blueprints
     from coffee_records.blueprints.coffees import coffees_bp
+    from coffee_records.blueprints.defaults import defaults_bp
     from coffee_records.blueprints.equipment import equipment_bp
     from coffee_records.blueprints.health import health_bp
     from coffee_records.blueprints.reports import reports_bp
@@ -67,6 +68,7 @@ def create_app(
 
     app.register_blueprint(health_bp)
     app.register_blueprint(coffees_bp)
+    app.register_blueprint(defaults_bp)
     app.register_blueprint(equipment_bp)
     app.register_blueprint(shots_bp)
     app.register_blueprint(reports_bp)

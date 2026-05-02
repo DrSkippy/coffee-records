@@ -13,6 +13,7 @@ import {
   IconPlus,
   IconSettings,
   IconList,
+  IconAdjustmentsAlt,
   IconTarget,
   IconBook,
 } from "@tabler/icons-react";
@@ -28,6 +29,7 @@ const navItems = [
   { path: "/reports", label: "Reports", icon: IconChartBar },
   { path: "/planner", label: "Shot Planner", icon: IconTarget },
   { path: "/api-docs", label: "API", icon: IconBook },
+  { path: "/defaults", label: "Defaults", icon: IconAdjustmentsAlt },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {

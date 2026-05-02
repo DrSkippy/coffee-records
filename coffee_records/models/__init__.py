@@ -3,6 +3,7 @@
 from coffee_records.models.coffee import Coffee, RoastLevel
 from coffee_records.models.equipment import BrewingDevice, Grinder, GrinderType, Scale
 from coffee_records.models.grind_model import GrindModelCoffeeIntercept, GrindModelTraining
+from coffee_records.models.settings import ShotDefaults
 from coffee_records.models.shot import DrinkType, Shot
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "DrinkType",
     "GrindModelTraining",
     "GrindModelCoffeeIntercept",
+    "ShotDefaults",
 ]
