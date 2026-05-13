@@ -12,3 +12,5 @@ frontend/dist/
 .mypy_cache/
 .coverage
 .idea
+import_data/
+sample_data/
