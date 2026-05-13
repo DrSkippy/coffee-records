@@ -266,6 +266,101 @@ def test_target_shot_time_excludes_drip(client: FlaskClient) -> None:
 
 
 # ---------------------------------------------------------------------------
+# shots-per-grinder endpoint
+# ---------------------------------------------------------------------------
+
+
+def test_shots_per_grinder_empty(client: FlaskClient) -> None:
+    """Returns empty list when no shots exist."""
+    resp = client.get("/api/reports/shots-per-grinder?date_from=2026-01-01&date_to=2026-12-31")
+    assert resp.status_code == 200
+    assert resp.get_json() == []
+
+
+def test_shots_per_grinder_basic_grouping(client: FlaskClient) -> None:
+    """Counts shots per grinder and returns make/model."""
+    grinder_a = _create_grinder(client)
+    grinder_b = _create_grinder(client)
+    _create_shot(client, grinder_id=grinder_a)
+    _create_shot(client, grinder_id=grinder_a)
+    _create_shot(client, grinder_id=grinder_b)
+    resp = client.get("/api/reports/shots-per-grinder?date_from=2026-01-01&date_to=2026-12-31")
+    data = resp.get_json()
+    counts = {row["grinder_id"]: row["count"] for row in data}
+    assert counts[grinder_a] == 2
+    assert counts[grinder_b] == 1
+    # Each row has make and model from the grinder record
+    by_id = {row["grinder_id"]: row for row in data}
+    assert by_id[grinder_a]["make"] == "Acme"
+    assert by_id[grinder_a]["model"] == "G1"
+
+
+def test_shots_per_grinder_sorted_descending(client: FlaskClient) -> None:
+    """Results are ordered highest count first."""
+    grinder_a = _create_grinder(client)
+    grinder_b = _create_grinder(client)
+    # grinder_b gets more shots
+    _create_shot(client, grinder_id=grinder_a)
+    _create_shot(client, grinder_id=grinder_b)
+    _create_shot(client, grinder_id=grinder_b)
+    _create_shot(client, grinder_id=grinder_b)
+    resp = client.get("/api/reports/shots-per-grinder?date_from=2026-01-01&date_to=2026-12-31")
+    data = resp.get_json()
+    assert data[0]["grinder_id"] == grinder_b
+    assert data[0]["count"] == 3
+    assert data[1]["grinder_id"] == grinder_a
+    assert data[1]["count"] == 1
+
+
+def test_shots_per_grinder_date_filter(client: FlaskClient) -> None:
+    """Shots outside the date range are excluded."""
+    grinder = _create_grinder(client)
+    _create_shot(client, grinder_id=grinder, date="2026-01-15")  # in range
+    _create_shot(client, grinder_id=grinder, date="2025-12-31")  # before range
+    resp = client.get("/api/reports/shots-per-grinder?date_from=2026-01-01&date_to=2026-12-31")
+    data = resp.get_json()
+    assert len(data) == 1
+    assert data[0]["count"] == 1
+
+
+def test_shots_per_grinder_excludes_no_grinder(client: FlaskClient) -> None:
+    """Shots without a grinder_id do not appear in results."""
+    _create_shot(client)  # no grinder
+    resp = client.get("/api/reports/shots-per-grinder?date_from=2026-01-01&date_to=2026-12-31")
+    assert resp.get_json() == []
+
+
+def test_shots_per_grinder_coffee_filter(client: FlaskClient) -> None:
+    """coffee_id filter excludes shots for other coffees."""
+    coffee_a = _create_coffee(client)
+    coffee_b = _create_coffee(client)
+    grinder = _create_grinder(client)
+    _create_shot(client, grinder_id=grinder, coffee_id=coffee_a)
+    _create_shot(client, grinder_id=grinder, coffee_id=coffee_b)  # excluded
+    resp = client.get(
+        f"/api/reports/shots-per-grinder?date_from=2026-01-01&date_to=2026-12-31&coffee_id={coffee_a}"
+    )
+    data = resp.get_json()
+    assert len(data) == 1
+    assert data[0]["count"] == 1
+
+
+def test_shots_per_grinder_device_filter(client: FlaskClient) -> None:
+    """device_id filter excludes shots from other brewing devices."""
+    device_a = _create_device(client)
+    device_b = _create_device(client)
+    grinder = _create_grinder(client)
+    _create_shot(client, grinder_id=grinder, device_id=device_a)
+    _create_shot(client, grinder_id=grinder, device_id=device_b)  # excluded
+    resp = client.get(
+        f"/api/reports/shots-per-grinder?date_from=2026-01-01&date_to=2026-12-31&device_id={device_a}"
+    )
+    data = resp.get_json()
+    assert len(data) == 1
+    assert data[0]["count"] == 1
+
+
+# ---------------------------------------------------------------------------
 # API key authentication
 # ---------------------------------------------------------------------------
 
