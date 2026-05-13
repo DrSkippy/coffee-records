@@ -5,6 +5,7 @@ import type {
   GrindModelParamsResult,
   GrindModelTraining,
   GrindRegressionResult,
+  GrinderShotCount,
   ShotsPerDayPoint,
 } from "../types";
 import api from "./client";
@@ -25,6 +26,9 @@ export const getShotsPerDay = (params: ReportParams = {}) =>
 
 export const getExtractionTrends = (params: ReportParams = {}) =>
   api.get<ExtractionPoint[]>("/reports/extraction-trends", { params }).then((r) => r.data);
+
+export const getShotsPerGrinder = (params: ReportParams = {}) =>
+  api.get<GrinderShotCount[]>("/reports/shots-per-grinder", { params }).then((r) => r.data);
 
 export const getByCoffee = (coffeeId: number, params: ReportParams = {}) =>
   api

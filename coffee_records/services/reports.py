@@ -93,6 +93,52 @@ def dose_yield_over_time(
     return results
 
 
+def shots_per_grinder(
+    session: Session,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    coffee_id: int | None = None,
+    device_id: int | None = None,
+) -> list[dict[str, Any]]:
+    """Return shot count grouped by grinder within the date range.
+
+    Args:
+        session: SQLAlchemy session.
+        date_from: Start date (inclusive). Defaults to 30 days ago.
+        date_to: End date (inclusive). Defaults to today.
+        coffee_id: Optional filter by coffee.
+        device_id: Optional filter by brewing device.
+
+    Returns:
+        List of dicts with keys: grinder_id, make, model, count. Sorted descending by count.
+    """
+    if date_from is None or date_to is None:
+        d_from, d_to = _default_range()
+        date_from = date_from or d_from
+        date_to = date_to or d_to
+
+    q = (
+        session.query(
+            Shot.grinder_id,
+            Grinder.make,
+            Grinder.model,
+            func.count(Shot.id).label("count"),
+        )
+        .join(Grinder, Shot.grinder_id == Grinder.id)
+        .filter(Shot.date >= date_from, Shot.date <= date_to)
+        .filter(Shot.grinder_id.isnot(None))
+    )
+    if coffee_id is not None:
+        q = q.filter(Shot.coffee_id == coffee_id)
+    if device_id is not None:
+        q = q.filter(Shot.device_id == device_id)
+    rows = q.group_by(Shot.grinder_id, Grinder.make, Grinder.model).order_by(func.count(Shot.id).desc()).all()
+    return [
+        {"grinder_id": row.grinder_id, "make": row.make, "model": row.model, "count": row.count}
+        for row in rows
+    ]
+
+
 def shots_per_day(
     session: Session,
     date_from: date | None = None,

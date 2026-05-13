@@ -25,6 +25,13 @@ export interface Grinder {
   created_at: string;
 }
 
+export interface GrinderShotCount {
+  grinder_id: number;
+  make: string;
+  model: string;
+  count: number;
+}
+
 export interface BrewingDevice {
   id: number;
   make: string;

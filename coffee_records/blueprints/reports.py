@@ -13,6 +13,7 @@ from coffee_records.services.reports import (
     get_grind_model_params,
     grind_regression,
     shots_per_day,
+    shots_per_grinder,
     target_shot_time_wma,
 )
 
@@ -95,6 +96,20 @@ def report_extraction_trends() -> object:
                 session, date_from, date_to, coffee_id, grinder_id, device_id
             )
         )
+
+
+@reports_bp.get("/shots-per-grinder")
+def report_shots_per_grinder() -> object:
+    """Shot count grouped by grinder.
+
+    Returns:
+        JSON list of grinder_id/make/model/count objects, sorted by count descending.
+    """
+    date_from, date_to = _parse_dates()
+    coffee_id = int(c) if (c := request.args.get("coffee_id")) else None
+    device_id = int(d) if (d := request.args.get("device_id")) else None
+    with get_session() as session:
+        return jsonify(shots_per_grinder(session, date_from, date_to, coffee_id, device_id))
 
 
 @reports_bp.get("/grind-regression")
