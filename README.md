@@ -135,6 +135,8 @@ Run these once against an existing database when upgrading:
 | `bin/migrate_maker_to_varchar.py` | Converts `shots.maker` from enum to VARCHAR |
 | `bin/add_extraction_delta_column.py` | Adds `shots.extraction_delta`; backfills −5 for "over extracted" notes, +5 for "under extracted" |
 | `bin/migrate_grind_model.py` | Adds `aeropress` to `drink_type` enum; creates `grind_model_trainings` and `grind_model_coffee_intercepts` tables |
+| `bin/add_shot_defaults_table.py` | Creates the `shot_defaults` singleton table used by the Settings page |
+| `bin/add_telemetry_column.py` | Adds `shots.telemetry_filename` for shot telemetry JSON uploads |
 
 ```bash
 poetry run python bin/<script>.py
@@ -168,6 +170,7 @@ The default view. Lists the most recent 50 shots, newest first. Each card shows:
 - Prep technique badges (Wedge, Shaker, WDT, Flow Taper)
 - Notes
 - Video link icon (if a video was attached)
+- Telemetry icon (if a telemetry JSON file was attached — click to open the telemetry chart modal)
 
 Filter the list by maker using the dropdown at the top.
 
@@ -243,7 +246,9 @@ Interactive API reference covering all endpoints, parameters, and curl examples.
 
 ### Reports
 
-Charts covering a selectable date range (last 7 / 30 / 90 days). All charts can be filtered simultaneously by coffee, grinder, and/or brewing machine.
+Charts covering a selectable date range (last 7 / 30 / 90 days). Filter by coffee and/or brewing machine using the dropdowns at the top.
+
+Grinders are not a dropdown filter — instead, each grinder with more than 3 shots in the selected period gets its own panel, sorted by shot count descending. Each panel shows four charts for that grinder only:
 
 | Chart | Type | Description |
 |---|---|---|
@@ -251,6 +256,14 @@ Charts covering a selectable date range (last 7 / 30 / 90 days). All charts can 
 | Extraction Time | Line | Extraction seconds per shot over time; one colored series per brewing device |
 | Dose:Yield Ratio | Line | Output ÷ input ratio per shot; one colored series per brewing device |
 | Dose vs Yield (g) | Multi-line | Dose and yield weight per shot; dose/yield pair per brewing device |
+
+Grinders with 3 or fewer shots in the selected range are silently omitted.
+
+### Settings
+
+Editable defaults for the New Shot form. Any value saved here pre-fills the corresponding field when opening a new shot, so only changed values need to be entered.
+
+Fields: maker, dose weight, pre-infusion time, extraction time, final weight, drink type, grinder temp before, and the four prep technique toggles (Wedge, Shaker, WDT, Flow Taper).
 
 ---
 
@@ -320,6 +333,8 @@ Requests without a valid key return `401 Unauthorized`. Authentication is disabl
 | `DELETE` | `/api/shots/<id>` | Delete a shot (also removes video from disk) |
 | `POST` | `/api/shots/<id>/video` | Upload a video (`multipart/form-data`, field `file`) |
 | `DELETE` | `/api/shots/<id>/video` | Remove the video |
+| `POST` | `/api/shots/<id>/telemetry` | Upload a telemetry JSON file (`multipart/form-data`, field `file`) |
+| `DELETE` | `/api/shots/<id>/telemetry` | Remove the telemetry file |
 
 **`GET /api/shots` query parameters**
 
@@ -387,13 +402,39 @@ Requests without a valid key return `401 Unauthorized`. Authentication is disabl
 | `PUT` | `/api/scales/<id>` | Update a scale |
 | `DELETE` | `/api/scales/<id>` | Delete (409 if shots reference it) |
 
+### Defaults
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/defaults` | Return current shot defaults (creates singleton row with built-in seeds on first call) |
+| `PUT` | `/api/defaults` | Update shot defaults |
+
+**Defaults object** (same shape for GET response and PUT body):
+
+```json
+{
+  "maker": "Scott",
+  "dose_weight": 20.0,
+  "pre_infusion_time": "5+5",
+  "extraction_time": 28.0,
+  "final_weight": 40.0,
+  "drink_type": "americano",
+  "grinder_temp_before": 64.0,
+  "wedge": true,
+  "shaker": true,
+  "wdt": true,
+  "flow_taper": false
+}
+```
+
 ### Reports
 
-All report endpoints accept optional query parameters: `date_from`, `date_to` (ISO dates), `coffee_id`, `grinder_id`, `device_id`.
+All report endpoints accept optional query parameters: `date_from`, `date_to` (ISO dates), `coffee_id`, `grinder_id`, `device_id` (except `shots-per-grinder`, which uses the grinder as the grouping key and does not accept `grinder_id`).
 
 | Method | Path | Response shape |
 |---|---|---|
 | `GET` | `/api/reports/shots-per-day` | `[{"date": "2026-03-21", "count": 3}]` |
+| `GET` | `/api/reports/shots-per-grinder` | `[{"grinder_id": 1, "make": "Mazzer", "model": "Mini", "count": 42}]` — sorted by count descending; accepts `date_from`, `date_to`, `coffee_id`, `device_id` |
 | `GET` | `/api/reports/extraction-trends` | `[{"date": "...", "shot_id": 1, "extraction_time": 28.0, "device_id": 1, "device_label": "ECM Synchronika"}]` |
 | `GET` | `/api/reports/dose-yield` | `[{"date": "...", "shot_id": 1, "dose_weight": 18.5, "final_weight": 37.2, "ratio": 2.011, "device_id": 1, "device_label": "ECM Synchronika"}]` |
 | `GET` | `/api/reports/by-coffee/<id>` | Aggregate stats + shot list for one coffee |
@@ -445,3 +486,4 @@ Filenames are UUID-based to prevent collisions. Uploading a new file to a record
 Accepted formats:
 - **Images** (coffee labels): jpg, jpeg, png, webp, gif
 - **Videos** (shots): mp4, mov, webm, avi, mkv
+- **Telemetry** (shots): JSON — stored at `/var/www/html/resources/coffee/telemetry/<uuid>.json`, served from `https://resources.drskippy.app/coffee/telemetry/<uuid>.json`. Clicking the telemetry icon on a shot card fetches the file and renders a pressure/flow chart in a modal.
