@@ -46,6 +46,7 @@ export default function CoffeesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFor, setUploadingFor] = useState<number | null>(null);
   const [viewingImage, setViewingImage] = useState<{ url: string; label: string } | null>(null);
+  const [confirmDeleteImageId, setConfirmDeleteImageId] = useState<number | null>(null);
 
   const form = useForm<CoffeeForm>({
     initialValues: {
@@ -197,7 +198,7 @@ export default function CoffeesPage() {
                           variant="subtle"
                           color="red"
                           size="xs"
-                          onClick={() => handleDeleteImage(c.id)}
+                          onClick={() => setConfirmDeleteImageId(c.id)}
                         >
                           <IconX size={12} />
                         </ActionIcon>
@@ -272,6 +273,30 @@ export default function CoffeesPage() {
             style={{ maxHeight: "80vh", width: "100%", display: "block" }}
           />
         )}
+      </Modal>
+
+      <Modal
+        opened={confirmDeleteImageId !== null}
+        onClose={() => setConfirmDeleteImageId(null)}
+        title="Remove photo?"
+        centered
+        size="sm"
+      >
+        <Text mb="md">Are you sure you want to remove this photo? This cannot be undone.</Text>
+        <Group justify="flex-end">
+          <Button variant="default" onClick={() => setConfirmDeleteImageId(null)}>
+            Cancel
+          </Button>
+          <Button
+            color="red"
+            onClick={() => {
+              if (confirmDeleteImageId !== null) handleDeleteImage(confirmDeleteImageId);
+              setConfirmDeleteImageId(null);
+            }}
+          >
+            Remove
+          </Button>
+        </Group>
       </Modal>
 
       <Modal
