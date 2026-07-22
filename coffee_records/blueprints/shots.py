@@ -211,14 +211,14 @@ def update_shot(shot_id: int) -> object:
         shot = session.get(Shot, shot_id)
         if shot is None:
             return jsonify({"error": "Shot not found"}), 404
-        effective_grind = payload.grind_setting if payload.grind_setting is not None else shot.grind_setting
-        effective_grinder_id = payload.grinder_id if payload.grinder_id is not None else shot.grinder_id
-        if effective_grind and effective_grinder_id is not None:
-            grinder = session.get(Grinder, effective_grinder_id)
-            if grinder:
-                error = validate_grind_setting(effective_grind, grinder.make, grinder.model)
-                if error:
-                    return jsonify({"error": error}), 422
+        if payload.grind_setting is not None and payload.grind_setting != shot.grind_setting:
+            effective_grinder_id = payload.grinder_id if payload.grinder_id is not None else shot.grinder_id
+            if effective_grinder_id is not None:
+                grinder = session.get(Grinder, effective_grinder_id)
+                if grinder:
+                    error = validate_grind_setting(payload.grind_setting, grinder.make, grinder.model)
+                    if error:
+                        return jsonify({"error": error}), 422
         for field, value in payload.model_dump(exclude_none=True).items():
             setattr(shot, field, value)
         session.commit()

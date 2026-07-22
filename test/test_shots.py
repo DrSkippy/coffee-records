@@ -278,11 +278,32 @@ def test_no_grinder_accepts_any_grind_setting(client: FlaskClient) -> None:
 
 
 def test_update_shot_grind_setting_validated(client: FlaskClient) -> None:
-    """PUT /api/shots/<id> validates grind_setting against the shot's existing grinder."""
+    """PUT /api/shots/<id> validates a changed grind_setting against the shot's grinder."""
     grinder_id = _make_option_o(client)
     shot = _create_shot(client, grinder_id=grinder_id, grind_setting="19.5")
     resp = client.put(f"/api/shots/{shot['id']}", json={"grind_setting": "8+5 1/2"})
     assert resp.status_code == 422
+
+
+def test_update_shot_unchanged_grind_setting_not_revalidated(client: FlaskClient) -> None:
+    """PUT /api/shots/<id> does not re-validate grind_setting when it hasn't changed.
+
+    Ensures historical shots with non-conforming formats can still be edited.
+    """
+    grinder_id = _make_mazzer(client)
+    # Create shot with no grinder so we can freely set a non-conforming grind_setting
+    shot = _create_shot(client)
+    # Set a legacy-style value with no grinder attached — no validation runs
+    r = client.put(f"/api/shots/{shot['id']}", json={"grind_setting": "19"})
+    assert r.status_code == 200
+    # Attach the Mazzer (grind_setting payload is None here — not re-validated)
+    r = client.put(f"/api/shots/{shot['id']}", json={"grinder_id": grinder_id})
+    assert r.status_code == 200
+    # Shot now has Mazzer + grind_setting="19" (non-conforming). Editing another field
+    # while echoing back the same grind_setting must succeed, not 422.
+    resp = client.put(f"/api/shots/{shot['id']}", json={"notes": "dial in", "grind_setting": "19"})
+    assert resp.status_code == 200
+    assert resp.get_json()["notes"] == "dial in"
 
 
 def test_update_shot_valid_grind_setting(client: FlaskClient) -> None:
