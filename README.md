@@ -184,9 +184,9 @@ Form to log a shot. All fields except date and maker are optional. The form open
 | Maker | Scott | Free-text with Scott / Sara as suggestions |
 | Coffee | Most recently entered | Searchable select from the coffees list |
 | Drink type | americano | americano / latte / cappuccino / drip / aeropress |
-| Grinder | Mazzer (matched by name) | Searchable select |
+| Grinder | Option-O (matched by name) | Searchable select |
 | Machine | ECM Synchronika (matched by name) | Searchable select |
-| Scale | Normcore (matched by name) | Searchable select |
+| Scale | Bookoo (matched by name) | Searchable select |
 | Pre-infusion time | 5+5 | Free text |
 | Dose (g) | 20 | Numeric |
 | Final weight (g) | 40 | Numeric |
@@ -219,7 +219,7 @@ Three tabs — **Grinders**, **Machines**, and **Scales** — each with full cre
 
 Grind setting recommendations powered by a multivariate model trained on your shot history. Select a grinder and coffee, enter the current grinder temperature, and the planner predicts the recommended starting setting.
 
-The model fits the following equation per grinder using alternating OLS:
+The model fits the following equation per grinder using a within-group (fixed effects) estimator:
 
 ```
 grind = c(coffee) + a0·(temp−65) + a2·(time−target) + a3·(dose−20) + a4·age_days + a5·(yield−2·dose)
@@ -231,12 +231,14 @@ With the shot planner assumptions (dose=20 g, time=target, yield=40 g), the dose
 grind = c(coffee) + a0·(temp−65) + a4·age_days
 ```
 
+Features that do not vary within any single coffee group (e.g. temperature always the same, dose always the same) are automatically assigned a coefficient of zero so they cannot distort the per-coffee intercepts.
+
 **Plots:**
 - **Grind vs Days since Roast** — scatter of actual and predicted settings across all shots for the grinder; a coffee-specific fit line when a coffee is selected
 - **Temperature Sensitivity** — predicted grind across ±5 °F of the entered temperature, with the current reading highlighted
 - **Coffee Intercept Distribution** — histogram of per-coffee baseline settings c(coffee) across all coffees in the model, with the selected coffee's bin highlighted
 
-The **Retrain Model** button triggers a fresh training run (warm-started from the previous run) and immediately refreshes all plots.
+The **Retrain Model** button triggers a fresh training run and immediately refreshes all plots.
 
 Training uses only americano, latte, and cappuccino shots. Drip and aeropress shots are excluded, as are the first day of shots for each coffee bag (dialing-in shots).
 
@@ -443,11 +445,11 @@ All report endpoints accept optional query parameters: `date_from`, `date_to` (I
 
 ### Grind Model
 
-A multivariate per-grinder model fitted with alternating OLS over all espresso shot history. Requires the `grind_model_trainings` and `grind_model_coffee_intercepts` tables (created by `bin/migrate_grind_model.py`).
+A multivariate per-grinder model fitted with a within-group (fixed effects) estimator over all espresso shot history. Requires the `grind_model_trainings` and `grind_model_coffee_intercepts` tables (created by `bin/migrate_grind_model.py`).
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/reports/grind-model/train` | Fit or re-fit the model for a grinder. Warm-starts from the previous training. Returns 201 with the training record. `grinder_id` required. |
+| `POST` | `/api/reports/grind-model/train` | Fit or re-fit the model for a grinder. Returns 201 with the training record. `grinder_id` required. |
 | `GET` | `/api/reports/grind-model/params` | Retrieve model parameters, per-coffee intercepts, target shot times, and data points for plotting. `grinder_id` required. Optional: `training_id` (specific run) or `as_of` (ISO date — latest training on or before that date). |
 
 **`/train` response** includes `training_id`, all coefficients (`a0`, `a2`–`a5`), `coffee_intercepts`, `r_squared`, `n_shots_used`, `n_shots_available`, `converged`, and `n_iterations`.

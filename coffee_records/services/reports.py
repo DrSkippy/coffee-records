@@ -660,7 +660,6 @@ def grind_regression(
 # ---------------------------------------------------------------------------
 
 _ESPRESSO_TYPES = [DrinkType.americano, DrinkType.latte, DrinkType.cappuccino]
-_DEFAULT_INTERCEPT: float = float(parse_grind_numeric("8+5") or 85.0)
 
 
 def _load_training_shots(session: Session, grinder_id: int) -> list[Shot]:
@@ -725,8 +724,8 @@ def fit_grind_model(
       - Stage 2: Fix a0-a5, update each c as the mean residual for that coffee.
       - Repeat until convergence (tol=1e-8) or 200 iterations.
 
-    Warm-starts from the most recent existing training for this grinder.
-    New coffees (not in prior training) are initialized to parse_grind_numeric("8+5") = 85.0.
+    Each coffee intercept is initialized from the mean of its actual grind values
+    to avoid ALS convergence traps from grinder-scale-specific constants.
 
     Persists the result to grind_model_trainings + grind_model_coffee_intercepts.
 
@@ -808,51 +807,67 @@ def fit_grind_model(
     )
     coffee_indices = [coffee_to_idx[r["coffee_id"]] for r in rows]
 
-    # Warm-start intercepts from last training; fall back to default
-    last_training = (
-        session.query(GrindModelTraining)
-        .filter(GrindModelTraining.grinder_id == grinder_id)
-        .order_by(GrindModelTraining.trained_at.desc())
-        .first()
-    )
-    c = np.full(n_coffees, _DEFAULT_INTERCEPT)
-    if last_training is not None:
-        prior = {ci.coffee_id: ci.intercept for ci in last_training.coffee_intercepts}
-        for i, cid in enumerate(unique_coffees):
-            if cid in prior:
-                c[i] = prior[cid]
+    # Within-group (fixed effects) estimator — the right tool for panel data.
+    #
+    # Demean both X and y within each coffee group before fitting.  By the
+    # Frisch-Waugh-Lovell theorem this is algebraically identical to OLS with
+    # coffee dummy variables.
+    #
+    # Feature selection: only include features whose within-coffee range exceeds
+    # _MIN_WITHIN_RANGE in at least one coffee group.  Features that never vary
+    # within any single coffee (e.g. temperature always 70 °F, dose always 19 g)
+    # get coefficient 0 automatically — no spurious coefficient is estimated from
+    # zero variation, so the planner remains accurate when those features take
+    # values different from the training constant.
+    _MIN_WITHIN_RANGE = 0.5
 
-    # Alternating OLS
-    MAX_ITER = 200
-    TOL = 1e-8
+    X_coffee_mean = np.zeros((n_coffees, 5))
+    y_coffee_mean = np.zeros(n_coffees)
+    within_ranges = np.zeros(5)
+    for i in range(n_coffees):
+        mask = np.array([idx == i for idx in coffee_indices])
+        if mask.sum() > 1:
+            X_coffee_mean[i] = X_global[mask].mean(axis=0)
+            y_coffee_mean[i] = float(y_arr[mask].mean())
+            within_ranges = np.maximum(
+                within_ranges,
+                X_global[mask].max(axis=0) - X_global[mask].min(axis=0),
+            )
+        elif mask.sum() == 1:
+            X_coffee_mean[i] = X_global[mask].mean(axis=0)
+            y_coffee_mean[i] = float(y_arr[mask].mean())
+
+    active_mask = within_ranges > _MIN_WITHIN_RANGE
+    inactive = [i for i, ok in enumerate(active_mask) if not ok]
+    if inactive:
+        logger.info(
+            "fit_grind_model: grinder_id=%d — zeroing features with insufficient"
+            " within-coffee range: indices %s (within_ranges=%s)",
+            grinder_id,
+            inactive,
+            [round(float(within_ranges[i]), 4) for i in inactive],
+        )
+
+    X_within = X_global - np.array([X_coffee_mean[idx] for idx in coffee_indices])
+    y_within = y_arr - np.array([y_coffee_mean[idx] for idx in coffee_indices])
+
     a = np.zeros(5)
-    converged = False
-    n_iterations = 0
+    if active_mask.any():
+        a_active, _, _, _ = np.linalg.lstsq(
+            X_within[:, active_mask], y_within, rcond=None
+        )
+        a[active_mask] = a_active
 
-    for iteration in range(MAX_ITER):
-        a_prev = a.copy()
-        c_prev = c.copy()
+    residuals = y_arr - X_global @ a
+    c = np.array(
+        [
+            float(residuals[np.array([idx == i for idx in coffee_indices])].mean())
+            for i in range(n_coffees)
+        ]
+    )
 
-        # Stage 1: fit global coefficients
-        c_per_shot = np.array([c[idx] for idx in coffee_indices])
-        y_adj = y_arr - c_per_shot
-        a, _, _, _ = np.linalg.lstsq(X_global, y_adj, rcond=None)
-
-        # Stage 2: fit per-coffee intercepts
-        residuals = y_arr - X_global @ a
-        for i in range(n_coffees):
-            mask = np.array([idx == i for idx in coffee_indices])
-            if mask.sum() > 0:
-                c[i] = float(residuals[mask].mean())
-
-        n_iterations = iteration + 1
-        if (
-            iteration > 0
-            and float(np.max(np.abs(a - a_prev))) < TOL
-            and float(np.max(np.abs(c - c_prev))) < TOL
-        ):
-            converged = True
-            break
+    converged = True
+    n_iterations = 1
 
     # R²
     c_per_shot_final = np.array([c[idx] for idx in coffee_indices])

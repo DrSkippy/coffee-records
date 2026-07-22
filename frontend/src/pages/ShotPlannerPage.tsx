@@ -37,9 +37,13 @@ interface HistBin {
   coffees: string[];
 }
 
-function formatGrind(v: number): string {
+function isMazzer(grinder: Grinder | null): boolean {
+  return `${grinder?.make ?? ""} ${grinder?.model ?? ""}`.toLowerCase().includes("mazzer");
+}
+
+function formatGrind(v: number, mazzer: boolean): string {
+  if (!mazzer) return String(Math.round(v * 100) / 100);
   const FRAC_MAP: Record<number, string> = { 0.25: "1/4", 0.5: "1/2", 0.75: "3/4" };
-  if (v < 30) return String(Math.round(v * 100) / 100);
   const g = Math.floor(v / 10);
   const rem = v - g * 10;
   let h = Math.floor(rem);
@@ -67,7 +71,8 @@ function fmtTerm(coeff: number, varName: string): string {
 
 function buildHistBins(
   intercepts: GrindModelParamsResult["coffee_intercepts"],
-  selectedIntercept: number | null
+  selectedIntercept: number | null,
+  fmt: (v: number) => string
 ): HistBin[] {
   if (intercepts.length === 0) return [];
   const vals = intercepts.map((ci) => ci.intercept);
@@ -80,8 +85,8 @@ function buildHistBins(
     const hi = lo + BIN_W;
     const inBin = intercepts.filter((ci) => ci.intercept >= lo && ci.intercept < hi);
     return {
-      label: formatGrind(lo),
-      range: `${formatGrind(lo)} – ${formatGrind(hi)}`,
+      label: fmt(lo),
+      range: `${fmt(lo)} – ${fmt(hi)}`,
       count: inBin.length,
       hasSelected:
         selectedIntercept !== null &&
@@ -191,6 +196,9 @@ export default function ShotPlannerPage() {
     label: `${g.make} ${g.model}`,
   }));
 
+  const selectedGrinder = grinders.find((g) => String(g.id) === grinderId) ?? null;
+  const fmt = (v: number) => formatGrind(v, isMazzer(selectedGrinder));
+
   const selectedCoffee = coffees.find((c) => c.id === Number(coffeeId)) ?? null;
   const ageDays = selectedCoffee?.roast_date ? daysSince(selectedCoffee.roast_date) : null;
   const coffeeIntercept =
@@ -242,7 +250,7 @@ export default function ShotPlannerPage() {
       : [];
 
   // Plot 3 — histogram of coffee intercepts
-  const histBins = params ? buildHistBins(params.coffee_intercepts, coffeeIntercept) : [];
+  const histBins = params ? buildHistBins(params.coffee_intercepts, coffeeIntercept, fmt) : [];
 
   return (
     <Stack>
@@ -324,7 +332,7 @@ export default function ShotPlannerPage() {
                     Recommended grind:
                   </Text>
                   <Text fw={700} size="xl">
-                    {formatGrind(predicted)}
+                    {fmt(predicted)}
                   </Text>
                   {params.r_squared !== null && (
                     <Text size="xs" c="dimmed">
@@ -392,10 +400,10 @@ export default function ShotPlannerPage() {
                   type="number"
                   dataKey="y"
                   domain={yDomain}
-                  tickFormatter={(v) => formatGrind(v as number)}
+                  tickFormatter={(v) => fmt(v as number)}
                   width={55}
                 />
-                <Tooltip formatter={(v) => formatGrind(v as number)} />
+                <Tooltip formatter={(v) => fmt(v as number)} />
                 <Legend verticalAlign="top" />
                 <Scatter
                   name="Actual"
@@ -444,11 +452,11 @@ export default function ShotPlannerPage() {
                     type="number"
                     dataKey="y"
                     domain={tempYDomain}
-                    tickFormatter={(v) => formatGrind(v as number)}
+                    tickFormatter={(v) => fmt(v as number)}
                     width={55}
                   />
                   <Tooltip
-                    formatter={(v) => formatGrind(v as number)}
+                    formatter={(v) => fmt(v as number)}
                     labelFormatter={(l) => `${(l as number).toFixed(1)}°F`}
                   />
                   <Legend verticalAlign="top" />
@@ -478,7 +486,7 @@ export default function ShotPlannerPage() {
               <Text size="xs" c="dimmed">
                 Baseline grind setting c(coffee) for each coffee in the model.
                 {coffeeIntercept !== null && (
-                  <> Highlighted bar is the currently selected coffee ({formatGrind(coffeeIntercept)}).</>
+                  <> Highlighted bar is the currently selected coffee ({fmt(coffeeIntercept)}).</>
                 )}
               </Text>
               <ResponsiveContainer width="80%" height={400}>
