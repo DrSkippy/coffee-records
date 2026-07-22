@@ -10,8 +10,10 @@ from werkzeug.datastructures import FileStorage
 
 from coffee_records.config import Config
 from coffee_records.database import get_session
+from coffee_records.models.equipment import Grinder
 from coffee_records.models.shot import Shot
 from coffee_records.schemas.shot import ShotCreate, ShotResponse, ShotUpdate
+from coffee_records.services.grind_validation import validate_grind_setting
 
 shots_bp = Blueprint("shots", __name__, url_prefix="/api/shots")
 
@@ -160,6 +162,14 @@ def create_shot() -> object:
     """
     payload = ShotCreate.model_validate(request.get_json())
     with get_session() as session:
+        if payload.grind_setting and payload.grinder_id is not None:
+            grinder = session.get(Grinder, payload.grinder_id)
+            if grinder:
+                error = validate_grind_setting(
+                    payload.grind_setting, grinder.make, grinder.model
+                )
+                if error:
+                    return jsonify({"error": error}), 422
         shot = Shot(**payload.model_dump())
         session.add(shot)
         session.commit()
@@ -201,6 +211,14 @@ def update_shot(shot_id: int) -> object:
         shot = session.get(Shot, shot_id)
         if shot is None:
             return jsonify({"error": "Shot not found"}), 404
+        effective_grind = payload.grind_setting if payload.grind_setting is not None else shot.grind_setting
+        effective_grinder_id = payload.grinder_id if payload.grinder_id is not None else shot.grinder_id
+        if effective_grind and effective_grinder_id is not None:
+            grinder = session.get(Grinder, effective_grinder_id)
+            if grinder:
+                error = validate_grind_setting(effective_grind, grinder.make, grinder.model)
+                if error:
+                    return jsonify({"error": error}), 422
         for field, value in payload.model_dump(exclude_none=True).items():
             setattr(shot, field, value)
         session.commit()

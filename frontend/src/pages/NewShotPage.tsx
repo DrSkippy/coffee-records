@@ -109,7 +109,7 @@ export default function NewShotPage() {
         if (c.length > 0) form.setFieldValue("coffee_id", String(c[0].id));
 
         const grinder = g.find((x) =>
-          `${x.make} ${x.model}`.toLowerCase().includes("mazzer")
+          `${x.make} ${x.model}`.toLowerCase().includes("option-o")
         );
         if (grinder) form.setFieldValue("grinder_id", String(grinder.id));
 
@@ -119,7 +119,7 @@ export default function NewShotPage() {
         if (device) form.setFieldValue("device_id", String(device.id));
 
         const scale = s.find((x) =>
-          `${x.make} ${x.model}`.toLowerCase().includes("normcore")
+          `${x.make} ${x.model}`.toLowerCase().includes("bookoo")
         );
         if (scale) form.setFieldValue("scale_id", String(scale.id));
       }
@@ -148,6 +148,29 @@ export default function NewShotPage() {
       notes: "",
       grinder_id: "",
       device_id: "",
+    },
+    validate: {
+      grind_setting: (value, values) => {
+        if (!value) return null;
+        const selectedGrinder = grinders.find((g) => String(g.id) === values.grinder_id);
+        if (!selectedGrinder) return null;
+        const name = `${selectedGrinder.make} ${selectedGrinder.model}`.toLowerCase();
+        if (name.includes("mazzer")) {
+          return /^\d+\+\d+( \d+\/\d+)?$/.test(value)
+            ? null
+            : 'Expected format: "#+# #/#" or "#+#" (e.g. "8+5 1/2" or "8+5")';
+        }
+        if (
+          name.includes("option-o") ||
+          name.includes("timemore") ||
+          name.includes("baratza")
+        ) {
+          return /^\d+(\.\d+)?$/.test(value)
+            ? null
+            : "Expected a single number (e.g. 19.5)";
+        }
+        return null;
+      },
     },
   });
 
