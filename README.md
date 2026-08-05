@@ -1,6 +1,6 @@
 # Coffee Records
 
-A personal espresso shot tracking application. Log every shot with dose, yield, extraction time, grinder, machine, and prep technique. Attach coffee label photos and shot videos. Visualize trends over time with built-in reports.
+A personal espresso shot tracking application. Log every shot with dose, yield, extraction time, grinder, machine, and prep technique. Attach coffee label photos, shot videos, and telemetry with generated chart previews. Visualize trends over time with built-in reports.
 
 ## Stack
 
@@ -23,14 +23,18 @@ The image is built externally and pushed to the local registry at `localhost:500
 ```bash
 docker build -t localhost:5000/coffee-records:latest .
 docker push localhost:5000/coffee-records:latest
-docker compose up -d
+docker compose pull
+docker compose run --rm coffee-records python bin/backfill_telemetry_thumbnails.py
+docker compose up -d --force-recreate
 ```
+
+The backfill runs before the new frontend is deployed and is safe to repeat; it skips existing thumbnails by default. Use `--force` only to regenerate every preview. No database migration is required for telemetry thumbnails.
 
 The multi-stage Dockerfile compiles the React frontend first, then copies the built assets into the Flask static directory. The single container serves both the API and the SPA.
 
 The app listens on port **8181** on the host (`0.0.0.0:8181 → container:5000`).
 
-Coffee label photos are stored on the host at `/var/www/html/resources/coffee/` (mounted into the container at `/resources`), so they persist across container restarts and are accessible to the NGINX static file server.
+Coffee label photos, shot videos, telemetry JSON, and generated telemetry PNG thumbnails are stored beneath `/var/www/html/resources/coffee/` (mounted into the container at `/resources`), so they persist across container restarts and are accessible to the NGINX static file server.
 
 ### NGINX
 
@@ -144,6 +148,16 @@ poetry run python bin/<script>.py
 
 All migration scripts are idempotent (`ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`, `ADD VALUE IF NOT EXISTS`).
 
+### Telemetry thumbnail backfill
+
+Thumbnail filenames are derived from the existing telemetry filename, so this feature does not require a schema migration. After building or pulling the updated image, generate previews for existing telemetry with:
+
+```bash
+docker compose run --rm coffee-records python bin/backfill_telemetry_thumbnails.py
+```
+
+The command skips existing PNGs, reports generated/skipped/failed counts, and exits nonzero if any source file cannot be processed. Pass `--force` to replace existing previews.
+
 ---
 
 ## Running tests
@@ -164,13 +178,15 @@ The app is a single-page React application served at the root URL. Navigation is
 
 The default view. Lists the most recent 50 shots, newest first. Each card shows:
 - Date and maker
+- A 28×28 coffee-label thumbnail when the selected coffee has a photo; click it to open the full image
 - Coffee name, drink type
 - Dose / yield / extraction time
 - Grinder and machine labels
 - Prep technique badges (Wedge, Shaker, WDT, Flow Taper)
 - Notes
 - Video link icon (if a video was attached)
-- Telemetry icon (if a telemetry JSON file was attached — click to open the telemetry chart modal)
+- A compact telemetry chart thumbnail when telemetry is attached; click it to open the interactive chart modal
+- A telemetry icon fallback when a legacy or missing thumbnail cannot be loaded
 
 Filter the list by maker using the dropdown at the top.
 
@@ -198,6 +214,7 @@ Form to log a shot. All fields except date and maker are optional. The form open
 | Flow Taper | — | Checkbox |
 | Notes | — | Free text |
 | Video | — | Optional video file (mp4, mov, webm, avi, mkv) — uploaded after the shot record is saved |
+| Telemetry | — | Optional Beanconqueror JSON — validated and uploaded with a generated PNG preview after the shot is saved |
 
 Equipment defaults (grinder, machine, scale) are resolved by substring match on `make + model` after the equipment list loads, so they adapt automatically if equipment records are renamed.
 
@@ -332,11 +349,13 @@ Requests without a valid key return `401 Unauthorized`. Authentication is disabl
 | `POST` | `/api/shots` | Create a shot |
 | `GET` | `/api/shots/<id>` | Get one shot |
 | `PUT` | `/api/shots/<id>` | Update a shot |
-| `DELETE` | `/api/shots/<id>` | Delete a shot (also removes video from disk) |
+| `DELETE` | `/api/shots/<id>` | Delete a shot and its video, telemetry JSON, and telemetry thumbnail |
 | `POST` | `/api/shots/<id>/video` | Upload a video (`multipart/form-data`, field `file`) |
 | `DELETE` | `/api/shots/<id>/video` | Remove the video |
-| `POST` | `/api/shots/<id>/telemetry` | Upload a telemetry JSON file (`multipart/form-data`, field `file`) |
-| `DELETE` | `/api/shots/<id>/telemetry` | Remove the telemetry file |
+| `POST` | `/api/shots/<id>/telemetry` | Validate telemetry JSON and upload it with a generated PNG thumbnail (`multipart/form-data`, field `file`) |
+| `DELETE` | `/api/shots/<id>/telemetry` | Remove the telemetry JSON and generated thumbnail |
+
+Telemetry upload returns `422` when the JSON is malformed or contains no usable weight, flow, or pressure data. A failed replacement leaves the previous JSON and thumbnail intact.
 
 **`GET /api/shots` query parameters**
 
@@ -358,6 +377,7 @@ Requests without a valid key return `401 Unauthorized`. Authentication is disabl
   "maker": "Scott",
   "coffee_id": 1,
   "coffee_name": "Ethiopia Yirgacheffe",
+  "coffee_image_filename": "a1b2c3d4.jpg",
   "dose_weight": 18.5,
   "pre_infusion_time": "5+5",
   "extraction_time": 28.0,
@@ -374,6 +394,8 @@ Requests without a valid key return `401 Unauthorized`. Authentication is disabl
   "flow_taper": false,
   "notes": "Dialed in well",
   "video_filename": "e5f6a7b8.mp4",
+  "telemetry_filename": "f6a7b8c9.json",
+  "telemetry_thumbnail_filename": "f6a7b8c9.png",
   "grinder_id": 1,
   "grinder_label": "Niche Zero",
   "device_id": 1,
@@ -483,9 +505,9 @@ And served publicly at:
 https://resources.drskippy.app/coffee/<uuid>.<ext>
 ```
 
-Filenames are UUID-based to prevent collisions. Uploading a new file to a record that already has one automatically replaces and deletes the old file. Deleting a shot or removing its video also removes the file from disk.
+Filenames are UUID-based to prevent collisions. Uploading a new file to a record that already has one automatically replaces and deletes the old file. Telemetry replacement is atomic: validation and PNG rendering complete before the shot is updated, so a failed replacement preserves the prior pair. Deleting a shot or removing an attachment removes its associated resources from disk.
 
 Accepted formats:
 - **Images** (coffee labels): jpg, jpeg, png, webp, gif
 - **Videos** (shots): mp4, mov, webm, avi, mkv
-- **Telemetry** (shots): JSON — stored at `/var/www/html/resources/coffee/telemetry/<uuid>.json`, served from `https://resources.drskippy.app/coffee/telemetry/<uuid>.json`. Clicking the telemetry icon on a shot card fetches the file and renders a pressure/flow chart in a modal.
+- **Telemetry** (shots): Beanconqueror JSON plus a generated 320×106 transparent PNG preview, stored as `/var/www/html/resources/coffee/telemetry/<uuid>.json` and `<uuid>.png`. Preview generation uses weight, flow, and pressure series; malformed JSON or data with no usable series is rejected with `422`. Clicking the preview fetches the JSON and renders the full interactive chart in a modal.

@@ -56,6 +56,7 @@ export interface Shot {
   maker: Maker;
   coffee_id: number | null;
   coffee_name: string | null;
+  coffee_image_filename: string | null;
   dose_weight: number | null;
   pre_infusion_time: string | null;
   extraction_time: number | null;
@@ -74,6 +75,7 @@ export interface Shot {
   notes: string | null;
   video_filename: string | null;
   telemetry_filename: string | null;
+  telemetry_thumbnail_filename: string | null;
   grinder_id: number | null;
   grinder_label: string | null;
   device_id: number | null;

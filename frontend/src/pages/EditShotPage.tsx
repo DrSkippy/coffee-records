@@ -25,11 +25,10 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getCoffees } from "../api/coffees";
 import { getBrewingDevices, getGrinders, getScales } from "../api/equipment";
+import { coffeeResourceUrl, telemetryResourceUrl } from "../api/resources";
 import { deleteShotTelemetry, deleteShotVideo, getShot, updateShot, uploadShotTelemetry, uploadShotVideo } from "../api/shots";
 import type { BrewingDevice, Coffee, Grinder, Scale } from "../types";
 
-const VIDEO_BASE_URL = "https://resources.drskippy.app/coffee";
-const TELEMETRY_BASE_URL = "https://resources.drskippy.app/coffee/telemetry";
 
 const posToValue = (pos: number): number => {
   if (pos === 0) return 0;
@@ -443,7 +442,7 @@ export default function EditShotPage() {
                 </Text>
                 <Group gap="xs">
                   <Anchor
-                    href={`${VIDEO_BASE_URL}/${existingVideo}`}
+                    href={coffeeResourceUrl(existingVideo)}
                     target="_blank"
                     size="sm"
                   >
@@ -509,7 +508,7 @@ export default function EditShotPage() {
                 </Text>
                 <Group gap="xs">
                   <Anchor
-                    href={`${TELEMETRY_BASE_URL}/${existingTelemetry}`}
+                    href={telemetryResourceUrl(existingTelemetry)}
                     target="_blank"
                     size="sm"
                   >

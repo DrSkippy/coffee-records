@@ -1,9 +1,9 @@
 import { LineChart } from "@mantine/charts";
 import { Center, Loader, Modal, Text } from "@mantine/core";
 import { useEffect, useState } from "react";
+import { telemetryResourceUrl } from "../../api/resources";
 import type { Shot } from "../../types";
 
-const TELEMETRY_BASE_URL = "https://resources.drskippy.app/coffee/telemetry";
 
 interface SeriesPoint {
   brew_time: number;
@@ -99,9 +99,11 @@ export default function TelemetryModal({
 
   useEffect(() => {
     if (!opened || !shot.telemetry_filename) return;
-    setLoading(true);
-    setError(null);
-    fetch(`${TELEMETRY_BASE_URL}/${shot.telemetry_filename}`)
+    queueMicrotask(() => {
+      setLoading(true);
+      setError(null);
+    });
+    fetch(telemetryResourceUrl(shot.telemetry_filename))
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();

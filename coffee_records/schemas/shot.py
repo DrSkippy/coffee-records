@@ -2,6 +2,7 @@
 
 from datetime import date as Date
 from datetime import datetime
+from pathlib import Path
 
 from pydantic import BaseModel
 
@@ -66,6 +67,7 @@ class ShotResponse(BaseModel):
     maker: str
     coffee_id: int | None
     coffee_name: str | None
+    coffee_image_filename: str | None
     dose_weight: float | None
     pre_infusion_time: str | None
     extraction_time: float | None
@@ -84,6 +86,7 @@ class ShotResponse(BaseModel):
     notes: str | None
     video_filename: str | None
     telemetry_filename: str | None
+    telemetry_thumbnail_filename: str | None
     grinder_id: int | None
     grinder_label: str | None
     device_id: int | None
@@ -106,9 +109,13 @@ class ShotResponse(BaseModel):
 
         s: Shot = shot  # type: ignore[assignment]
         coffee_name = s.coffee.name if s.coffee else None
-        grinder_label = (
-            f"{s.grinder.make} {s.grinder.model}" if s.grinder else None
+        coffee_image_filename = s.coffee.image_filename if s.coffee else None
+        telemetry_thumbnail_filename = (
+            Path(s.telemetry_filename).with_suffix(".png").name
+            if s.telemetry_filename
+            else None
         )
+        grinder_label = f"{s.grinder.make} {s.grinder.model}" if s.grinder else None
         device_label = f"{s.device.make} {s.device.model}" if s.device else None
         scale_label = f"{s.scale.make} {s.scale.model}" if s.scale else None
 
@@ -118,6 +125,7 @@ class ShotResponse(BaseModel):
             maker=s.maker,
             coffee_id=s.coffee_id,
             coffee_name=coffee_name,
+            coffee_image_filename=coffee_image_filename,
             dose_weight=s.dose_weight,
             pre_infusion_time=s.pre_infusion_time,
             extraction_time=s.extraction_time,
@@ -136,6 +144,7 @@ class ShotResponse(BaseModel):
             notes=s.notes,
             video_filename=s.video_filename,
             telemetry_filename=s.telemetry_filename,
+            telemetry_thumbnail_filename=telemetry_thumbnail_filename,
             grinder_id=s.grinder_id,
             grinder_label=grinder_label,
             device_id=s.device_id,

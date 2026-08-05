@@ -14,6 +14,10 @@ from coffee_records.models.equipment import Grinder
 from coffee_records.models.shot import Shot
 from coffee_records.schemas.shot import ShotCreate, ShotResponse, ShotUpdate
 from coffee_records.services.grind_validation import validate_grind_setting
+from coffee_records.services.telemetry import (
+    TelemetryValidationError,
+    render_telemetry_thumbnail,
+)
 
 shots_bp = Blueprint("shots", __name__, url_prefix="/api/shots")
 
@@ -58,20 +62,25 @@ def _delete_video_file(filename: str, cfg: Config) -> None:
         path.unlink()
 
 
-def _save_telemetry(file: FileStorage, cfg: Config) -> str:
-    """Save an uploaded telemetry JSON and return its filename.
-
-    Args:
-        file: The uploaded file object.
-        cfg: Application config.
-
-    Returns:
-        The saved filename (UUID-based).
-    """
-    filename = f"{uuid.uuid4()}.json"
+def _save_telemetry(payload: bytes, thumbnail: bytes, cfg: Config) -> str:
+    """Atomically save telemetry JSON and its PNG thumbnail."""
+    stem = str(uuid.uuid4())
+    filename = f"{stem}.json"
     dest = Path(cfg.uploads.coffee_image_dir) / "telemetry"
     dest.mkdir(parents=True, exist_ok=True)
-    file.save(dest / filename)
+    json_path = dest / filename
+    thumbnail_path = dest / f"{stem}.png"
+    json_temp = dest / f".{stem}.json.tmp"
+    thumbnail_temp = dest / f".{stem}.png.tmp"
+    try:
+        json_temp.write_bytes(payload)
+        thumbnail_temp.write_bytes(thumbnail)
+        json_temp.replace(json_path)
+        thumbnail_temp.replace(thumbnail_path)
+    except OSError:
+        for path in (json_temp, thumbnail_temp, json_path, thumbnail_path):
+            path.unlink(missing_ok=True)
+        raise
     return filename
 
 
@@ -82,9 +91,9 @@ def _delete_telemetry_file(filename: str, cfg: Config) -> None:
         filename: The filename to delete.
         cfg: Application config.
     """
-    path = Path(cfg.uploads.coffee_image_dir) / "telemetry" / filename
-    if path.exists():
-        path.unlink()
+    directory = Path(cfg.uploads.coffee_image_dir) / "telemetry"
+    (directory / filename).unlink(missing_ok=True)
+    (directory / Path(filename).with_suffix(".png").name).unlink(missing_ok=True)
 
 
 def _load_shot(session: object, shot_id: int) -> Shot | None:
@@ -150,7 +159,9 @@ def list_shots() -> object:
         if limit:
             q = q.limit(limit)
         shots = q.all()
-        return jsonify([ShotResponse.from_orm_shot(s).model_dump(mode="json") for s in shots])
+        return jsonify(
+            [ShotResponse.from_orm_shot(s).model_dump(mode="json") for s in shots]
+        )
 
 
 @shots_bp.post("")
@@ -211,12 +222,21 @@ def update_shot(shot_id: int) -> object:
         shot = session.get(Shot, shot_id)
         if shot is None:
             return jsonify({"error": "Shot not found"}), 404
-        if payload.grind_setting is not None and payload.grind_setting != shot.grind_setting:
-            effective_grinder_id = payload.grinder_id if payload.grinder_id is not None else shot.grinder_id
+        if (
+            payload.grind_setting is not None
+            and payload.grind_setting != shot.grind_setting
+        ):
+            effective_grinder_id = (
+                payload.grinder_id
+                if payload.grinder_id is not None
+                else shot.grinder_id
+            )
             if effective_grinder_id is not None:
                 grinder = session.get(Grinder, effective_grinder_id)
                 if grinder:
-                    error = validate_grind_setting(payload.grind_setting, grinder.make, grinder.model)
+                    error = validate_grind_setting(
+                        payload.grind_setting, grinder.make, grinder.model
+                    )
                     if error:
                         return jsonify({"error": error}), 422
         for field, value in payload.model_dump(exclude_none=True).items():
@@ -319,14 +339,25 @@ def upload_shot_telemetry(shot_id: int) -> object:
     if not file.filename:
         return jsonify({"error": "Empty filename"}), 400
     cfg = _cfg()
+    payload = file.read()
+    try:
+        thumbnail = render_telemetry_thumbnail(payload)
+    except TelemetryValidationError as exc:
+        return jsonify({"error": str(exc)}), 422
     with get_session() as session:
         shot = session.get(Shot, shot_id)
         if shot is None:
             return jsonify({"error": "Shot not found"}), 404
-        if shot.telemetry_filename:
-            _delete_telemetry_file(shot.telemetry_filename, cfg)
-        shot.telemetry_filename = _save_telemetry(file, cfg)
-        session.commit()
+        previous_filename = shot.telemetry_filename
+        new_filename = _save_telemetry(payload, thumbnail, cfg)
+        try:
+            shot.telemetry_filename = new_filename
+            session.commit()
+        except Exception:
+            _delete_telemetry_file(new_filename, cfg)
+            raise
+        if previous_filename:
+            _delete_telemetry_file(previous_filename, cfg)
         loaded = _load_shot(session, shot_id)
         assert loaded is not None
         return jsonify(ShotResponse.from_orm_shot(loaded).model_dump(mode="json"))

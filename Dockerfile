@@ -28,6 +28,7 @@ RUN poetry config virtualenvs.create false \
 
 # Copy application code
 COPY coffee_records/ ./coffee_records/
+COPY bin/backfill_telemetry_thumbnails.py ./bin/backfill_telemetry_thumbnails.py
 COPY config.yaml ./
 
 # Copy built frontend into Flask static directory

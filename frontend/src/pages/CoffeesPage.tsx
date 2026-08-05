@@ -25,9 +25,9 @@ import {
   updateCoffee,
   uploadCoffeeImage,
 } from "../api/coffees";
+import { coffeeResourceUrl } from "../api/resources";
 import type { Coffee } from "../types";
 
-const IMAGE_BASE_URL = "https://resources.drskippy.app/coffee";
 
 interface CoffeeForm {
   name: string;
@@ -177,7 +177,7 @@ export default function CoffeesPage() {
         <Table.Tbody>
           {coffees.map((c) => {
             const imageUrl = c.image_filename
-              ? `${IMAGE_BASE_URL}/${c.image_filename}`
+              ? coffeeResourceUrl(c.image_filename)
               : null;
             return (
               <Table.Tr key={c.id}>
