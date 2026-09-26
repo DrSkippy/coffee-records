@@ -3,8 +3,10 @@
 import uuid
 from datetime import date
 from pathlib import Path
+from typing import cast
 
 from flask import Blueprint, current_app, jsonify, request
+from flask.typing import ResponseReturnValue
 from sqlalchemy.orm import joinedload
 from werkzeug.datastructures import FileStorage
 
@@ -27,7 +29,7 @@ ALLOWED_TELEMETRY_EXTENSIONS = {".json"}
 
 def _cfg() -> Config:
     """Return the application config."""
-    return current_app.config["APP_CONFIG"]  # type: ignore[return-value]
+    return cast(Config, current_app.config["APP_CONFIG"])
 
 
 def _save_video(file: FileStorage, cfg: Config) -> str:
@@ -123,7 +125,7 @@ def _load_shot(session: object, shot_id: int) -> Shot | None:
 
 
 @shots_bp.get("")
-def list_shots() -> object:
+def list_shots() -> ResponseReturnValue:
     """List shots with optional filters.
 
     Query params: maker, coffee_id, date_from (ISO), date_to (ISO), limit, offset.
@@ -165,7 +167,7 @@ def list_shots() -> object:
 
 
 @shots_bp.post("")
-def create_shot() -> object:
+def create_shot() -> ResponseReturnValue:
     """Create a new shot.
 
     Returns:
@@ -191,7 +193,7 @@ def create_shot() -> object:
 
 
 @shots_bp.get("/<int:shot_id>")
-def get_shot(shot_id: int) -> object:
+def get_shot(shot_id: int) -> ResponseReturnValue:
     """Get a single shot by ID.
 
     Args:
@@ -208,7 +210,7 @@ def get_shot(shot_id: int) -> object:
 
 
 @shots_bp.put("/<int:shot_id>")
-def update_shot(shot_id: int) -> object:
+def update_shot(shot_id: int) -> ResponseReturnValue:
     """Update a shot.
 
     Args:
@@ -248,7 +250,7 @@ def update_shot(shot_id: int) -> object:
 
 
 @shots_bp.delete("/<int:shot_id>")
-def delete_shot(shot_id: int) -> object:
+def delete_shot(shot_id: int) -> ResponseReturnValue:
     """Delete a shot.
 
     Args:
@@ -271,7 +273,7 @@ def delete_shot(shot_id: int) -> object:
 
 
 @shots_bp.post("/<int:shot_id>/video")
-def upload_shot_video(shot_id: int) -> object:
+def upload_shot_video(shot_id: int) -> ResponseReturnValue:
     """Upload a video for a shot.
 
     Args:
@@ -300,7 +302,7 @@ def upload_shot_video(shot_id: int) -> object:
 
 
 @shots_bp.delete("/<int:shot_id>/video")
-def delete_shot_video(shot_id: int) -> object:
+def delete_shot_video(shot_id: int) -> ResponseReturnValue:
     """Remove the video for a shot.
 
     Args:
@@ -324,7 +326,7 @@ def delete_shot_video(shot_id: int) -> object:
 
 
 @shots_bp.post("/<int:shot_id>/telemetry")
-def upload_shot_telemetry(shot_id: int) -> object:
+def upload_shot_telemetry(shot_id: int) -> ResponseReturnValue:
     """Upload a telemetry JSON for a shot.
 
     Args:
@@ -364,7 +366,7 @@ def upload_shot_telemetry(shot_id: int) -> object:
 
 
 @shots_bp.delete("/<int:shot_id>/telemetry")
-def delete_shot_telemetry(shot_id: int) -> object:
+def delete_shot_telemetry(shot_id: int) -> ResponseReturnValue:
     """Remove the telemetry file for a shot.
 
     Args:

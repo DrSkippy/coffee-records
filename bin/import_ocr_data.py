@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 # Shared: circled-option decoder
 # ---------------------------------------------------------------------------
 
+
 def parse_circled(
     field: str,
     options: list[str],
@@ -95,7 +96,11 @@ def parse_circled(
 
         logger.debug(
             "parse_circled [%s]: raw=%r  paren_token=%r  position=%d  -> %r",
-            context, raw, token, pos + 1, expected,
+            context,
+            raw,
+            token,
+            pos + 1,
+            expected,
         )
         return pos, expected, warnings
 
@@ -108,7 +113,11 @@ def parse_circled(
             expected = options[i]
             logger.debug(
                 "parse_circled [%s]: raw=%r  zero-prefix token=%r at position %d -> %r",
-                context, raw, tok, i + 1, expected,
+                context,
+                raw,
+                tok,
+                i + 1,
+                expected,
             )
             return i, expected, warnings
 
@@ -122,6 +131,7 @@ def parse_circled(
 # ---------------------------------------------------------------------------
 # Field-level parsers
 # ---------------------------------------------------------------------------
+
 
 def parse_date(raw: str, year: int = 2026) -> date | None:
     """Parse an M/D string into a date using the given year.
@@ -200,14 +210,22 @@ def parse_drink_weight(raw: str, context: str = "") -> str | None:
     if nums:
         n = int(nums[0])
         if 40 <= n <= 500:
-            logger.debug("parse_drink_weight [%s]: %r -> drink weight %dg", context, raw, n)
+            logger.debug(
+                "parse_drink_weight [%s]: %r -> drink weight %dg", context, raw, n
+            )
             return f"drink weight: {n}g"
         logger.debug(
             "parse_drink_weight [%s]: %r -> %d out of range [40, 500], discarding",
-            context, raw, n,
+            context,
+            raw,
+            n,
         )
     else:
-        logger.debug("parse_drink_weight [%s]: %r -> no numeric content, discarding", context, raw)
+        logger.debug(
+            "parse_drink_weight [%s]: %r -> no numeric content, discarding",
+            context,
+            raw,
+        )
 
     return None
 
@@ -248,7 +266,9 @@ def infer_grinder_key(grind_setting: str) -> str | None:
     if re.match(r"^\d+(\.\d+)?$", grind_setting):
         logger.debug("infer_grinder: %r is numeric -> baratza", grind_setting)
         return "baratza"
-    logger.debug("infer_grinder: %r -> unrecognized pattern, no grinder inferred", grind_setting)
+    logger.debug(
+        "infer_grinder: %r -> unrecognized pattern, no grinder inferred", grind_setting
+    )
     return None
 
 
@@ -291,6 +311,7 @@ BREW_METHOD_LABELS: dict[str, str] = {
 # CSV parsers
 # ---------------------------------------------------------------------------
 
+
 def parse_coffees(path: Path, year: int = 2026) -> list[dict[str, Any]]:
     """Parse the coffee_roasters.csv file into a list of coffee dicts.
 
@@ -316,7 +337,11 @@ def parse_coffees(path: Path, year: int = 2026) -> list[dict[str, Any]]:
             name = row.get("Coffee Name", "").strip()
 
             if not roaster and not name:
-                logger.info("coffees row %d (code=%s): all fields empty — skipping", row_num, code)
+                logger.info(
+                    "coffees row %d (code=%s): all fields empty — skipping",
+                    row_num,
+                    code,
+                )
                 continue
 
             row_warnings: list[str] = []
@@ -345,7 +370,12 @@ def parse_coffees(path: Path, year: int = 2026) -> list[dict[str, Any]]:
 
             logger.info(
                 "coffees row %d: code=%s  %s / %s  roast=%s  date=%s",
-                row_num, code, roaster, name, roast_level, roast_date,
+                row_num,
+                code,
+                roaster,
+                name,
+                roast_level,
+                roast_date,
             )
             for warning in row_warnings:
                 logger.warning("  %s", warning)
@@ -382,7 +412,9 @@ def parse_shots(path: Path, year: int = 2026) -> list[dict[str, Any]]:
             # Date (required)
             date_val = parse_date(row.get("Brew Date", "").strip(), year)
             if date_val is None:
-                logger.warning("shots row %d: missing/invalid Brew Date — skipping row", row_num)
+                logger.warning(
+                    "shots row %d: missing/invalid Brew Date — skipping row", row_num
+                )
                 continue
 
             # Brew method (logged only, not stored in DB)
@@ -394,7 +426,8 @@ def parse_shots(path: Path, year: int = 2026) -> list[dict[str, Any]]:
             row_warnings.extend(w)
             logger.debug(
                 "shots row %d: brew_method=%s",
-                row_num, BREW_METHOD_LABELS.get(bm_key or "", "unknown"),
+                row_num,
+                BREW_METHOD_LABELS.get(bm_key or "", "unknown"),
             )
 
             # Brewer -> maker
@@ -418,7 +451,9 @@ def parse_shots(path: Path, year: int = 2026) -> list[dict[str, Any]]:
                 drink_raw, DRINK_OPTIONS, context=f"shots row {row_num} drink"
             )
             row_warnings.extend(w)
-            drink_type: DrinkType | None = DRINK_MAP.get(drink_key) if drink_key else None
+            drink_type: DrinkType | None = (
+                DRINK_MAP.get(drink_key) if drink_key else None
+            )
 
             # Numeric fields
             dose_weight = parse_float(
@@ -428,13 +463,16 @@ def parse_shots(path: Path, year: int = 2026) -> list[dict[str, Any]]:
                 row.get("Brew Time (s)", ""), context=f"shots row {row_num} extraction"
             )
             final_weight = parse_float(
-                row.get("Shot Weight (g)", ""), context=f"shots row {row_num} final_weight"
+                row.get("Shot Weight (g)", ""),
+                context=f"shots row {row_num} final_weight",
             )
             grinder_temp_before = parse_float(
-                row.get("Pre Grinder Temp (F)", ""), context=f"shots row {row_num} temp_before"
+                row.get("Pre Grinder Temp (F)", ""),
+                context=f"shots row {row_num} temp_before",
             )
             grinder_temp_after = parse_float(
-                row.get("Post Grinder Temp (F)", ""), context=f"shots row {row_num} temp_after"
+                row.get("Post Grinder Temp (F)", ""),
+                context=f"shots row {row_num} temp_after",
             )
 
             # Pre-infusion
@@ -488,8 +526,15 @@ def parse_shots(path: Path, year: int = 2026) -> list[dict[str, Any]]:
             logger.info(
                 "shots row %d: %s  code=%s  maker=%s  drink=%s  "
                 "dose=%s  yield=%s  extr=%s  grind=%s  grinder=%s",
-                row_num, date_val, code, maker, drink_type,
-                dose_weight, final_weight, extraction_time, grind_setting,
+                row_num,
+                date_val,
+                code,
+                maker,
+                drink_type,
+                dose_weight,
+                final_weight,
+                extraction_time,
+                grind_setting,
                 grinder_key or "none",
             )
             for warning in row_warnings:
@@ -519,34 +564,66 @@ def resolve_equipment(session: Any) -> dict[str, int | None]:
     Returns:
         Dict with keys "mazzer", "baratza", "breville", "ecm"; values are DB IDs or None
     """
-    result: dict[str, int | None] = {"mazzer": None, "baratza": None, "breville": None, "ecm": None}
+    result: dict[str, int | None] = {
+        "mazzer": None,
+        "baratza": None,
+        "breville": None,
+        "ecm": None,
+    }
 
     for grinder in session.query(Grinder).all():
         label = f"{grinder.make} {grinder.model}".lower()
         if "mazzer" in label and result["mazzer"] is None:
             result["mazzer"] = grinder.id
-            logger.info("Equipment: Mazzer -> id=%d (%s %s)", grinder.id, grinder.make, grinder.model)
+            logger.info(
+                "Equipment: Mazzer -> id=%d (%s %s)",
+                grinder.id,
+                grinder.make,
+                grinder.model,
+            )
         elif "baratza" in label and result["baratza"] is None:
             result["baratza"] = grinder.id
-            logger.info("Equipment: Baratza -> id=%d (%s %s)", grinder.id, grinder.make, grinder.model)
+            logger.info(
+                "Equipment: Baratza -> id=%d (%s %s)",
+                grinder.id,
+                grinder.make,
+                grinder.model,
+            )
 
     for device in session.query(BrewingDevice).all():
         label = f"{device.make} {device.model}".lower()
         if "breville" in label and result["breville"] is None:
             result["breville"] = device.id
-            logger.info("Equipment: Breville -> id=%d (%s %s)", device.id, device.make, device.model)
+            logger.info(
+                "Equipment: Breville -> id=%d (%s %s)",
+                device.id,
+                device.make,
+                device.model,
+            )
         if ("ecm" in label or "synchronika" in label) and result["ecm"] is None:
             result["ecm"] = device.id
-            logger.info("Equipment: ECM -> id=%d (%s %s)", device.id, device.make, device.model)
+            logger.info(
+                "Equipment: ECM -> id=%d (%s %s)", device.id, device.make, device.model
+            )
 
     if result["mazzer"] is None:
-        logger.warning("Equipment: Mazzer NOT FOUND in DB — grinder_id will be null for Mazzer shots")
+        logger.warning(
+            "Equipment: Mazzer NOT FOUND in DB — grinder_id will be null for Mazzer shots"
+        )
     if result["baratza"] is None:
-        logger.warning("Equipment: Baratza NOT FOUND in DB — grinder_id will be null for Baratza shots")
+        logger.warning(
+            "Equipment: Baratza NOT FOUND in DB — grinder_id will be null for Baratza shots"
+        )
     if result["breville"] is None:
-        logger.warning("Equipment: Breville NOT FOUND in DB — device_id will be null for pre-%s shots", _MACHINE_CUTOVER)
+        logger.warning(
+            "Equipment: Breville NOT FOUND in DB — device_id will be null for pre-%s shots",
+            _MACHINE_CUTOVER,
+        )
     if result["ecm"] is None:
-        logger.warning("Equipment: ECM NOT FOUND in DB — device_id will be null for post-%s shots", _MACHINE_CUTOVER)
+        logger.warning(
+            "Equipment: ECM NOT FOUND in DB — device_id will be null for post-%s shots",
+            _MACHINE_CUTOVER,
+        )
 
     return result
 
@@ -554,6 +631,7 @@ def resolve_equipment(session: Any) -> dict[str, int | None]:
 # ---------------------------------------------------------------------------
 # Coffee deduplication
 # ---------------------------------------------------------------------------
+
 
 def _token_overlap(a: str, b: str) -> float:
     """Fraction of tokens in 'a' that appear in 'b' (case-insensitive)."""
@@ -605,38 +683,52 @@ def find_existing_coffee(session: Any, coffee: dict[str, Any]) -> int | None:
         return None
 
     candidates = (
-        session.query(Coffee)
-        .filter(Coffee.roast_date == coffee["roast_date"])
-        .all()
+        session.query(Coffee).filter(Coffee.roast_date == coffee["roast_date"]).all()
     )
 
     for c in candidates:
         name_score = _token_overlap(coffee.get("name", ""), c.name or "")
         roaster_score = _token_overlap(coffee.get("roaster", ""), c.roaster or "")
-        name_ratio = SequenceMatcher(None, (coffee.get("name") or "").lower(), (c.name or "").lower()).ratio()
-        roaster_ratio = SequenceMatcher(None, (coffee.get("roaster") or "").lower(), (c.roaster or "").lower()).ratio()
+        name_ratio = SequenceMatcher(
+            None, (coffee.get("name") or "").lower(), (c.name or "").lower()
+        ).ratio()
+        roaster_ratio = SequenceMatcher(
+            None, (coffee.get("roaster") or "").lower(), (c.roaster or "").lower()
+        ).ratio()
 
         name_match = _fuzzy_match(coffee.get("name", ""), c.name or "", threshold=0.8)
-        roaster_match = _fuzzy_match(coffee.get("roaster", ""), c.roaster or "", threshold=0.5)
+        roaster_match = _fuzzy_match(
+            coffee.get("roaster", ""), c.roaster or "", threshold=0.5
+        )
 
         logger.debug(
             "find_existing_coffee: comparing '%s'/'%s' vs existing id=%d '%s'/'%s' "
             "name_score=%.2f(ratio=%.2f) roaster_score=%.2f(ratio=%.2f)",
-            coffee.get("name"), coffee.get("roaster"),
-            c.id, c.name, c.roaster,
-            name_score, name_ratio, roaster_score, roaster_ratio,
+            coffee.get("name"),
+            coffee.get("roaster"),
+            c.id,
+            c.name,
+            c.roaster,
+            name_score,
+            name_ratio,
+            roaster_score,
+            roaster_ratio,
         )
 
         if name_match and roaster_match:
             logger.info(
                 "Coffee '%s' roast_date=%s -> matched existing id=%d '%s' "
                 "(name_overlap=%.0f%% name_ratio=%.0f%% roaster_overlap=%.0f%% roaster_ratio=%.0f%%) — skipping insert",
-                coffee["name"], coffee["roast_date"],
-                c.id, c.name,
-                name_score * 100, name_ratio * 100,
-                roaster_score * 100, roaster_ratio * 100,
+                coffee["name"],
+                coffee["roast_date"],
+                c.id,
+                c.name,
+                name_score * 100,
+                name_ratio * 100,
+                roaster_score * 100,
+                roaster_ratio * 100,
             )
-            return c.id
+            return int(c.id)
 
     return None
 
@@ -723,7 +815,8 @@ def import_data(
         if coffee_id is None and not dry_run:
             logger.warning(
                 "shots row %d: code=%s has no matching coffee — coffee_id will be null",
-                row_num, code,
+                row_num,
+                code,
             )
 
         grinder_id = equipment.get(grinder_key) if grinder_key else None
@@ -740,15 +833,18 @@ def import_data(
         if dry_run:
             grind_info = s.get("grind_setting") or "—"
             grinder_info = (
-                f"{grinder_key}(id={grinder_id})" if grinder_id
+                f"{grinder_key}(id={grinder_id})"
+                if grinder_id
                 else (f"{grinder_key}(NOT IN DB)" if grinder_key else "none")
             )
             device_info = (
-                f"{device_key}(id={device_id})" if device_id
+                f"{device_key}(id={device_id})"
+                if device_id
                 else (f"{device_key}(NOT IN DB)" if device_key else "none")
             )
             coffee_ref = (
-                f"{code}(id={coffee_id})" if coffee_id and coffee_id > 0
+                f"{code}(id={coffee_id})"
+                if coffee_id and coffee_id > 0
                 else f"{code}(TBD)"
             )
             print(
@@ -760,9 +856,7 @@ def import_data(
             if s.get("notes"):
                 print(f"         notes: {s['notes']}")
         else:
-            fields = {
-                k: v for k, v in s.items() if k not in _INTERNAL_KEYS
-            }
+            fields = {k: v for k, v in s.items() if k not in _INTERNAL_KEYS}
             fields["coffee_id"] = coffee_id
             fields["grinder_id"] = grinder_id
             fields["device_id"] = device_id
@@ -771,7 +865,11 @@ def import_data(
             inserted_shots += 1
             logger.info(
                 "Inserted shot row=%d: %s %s coffee_id=%s grinder=%s",
-                row_num, s["date"], s["maker"], coffee_id, grinder_key,
+                row_num,
+                s["date"],
+                s["maker"],
+                coffee_id,
+                grinder_key,
             )
 
     if dry_run:
@@ -797,6 +895,7 @@ def import_data(
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     """Parse arguments and run the import."""
@@ -837,7 +936,8 @@ def main() -> None:
         help="Parse and display what would be imported without writing to the database",
     )
     parser.add_argument(
-        "--verbose", "-v",
+        "--verbose",
+        "-v",
         action="store_true",
         help="Enable DEBUG-level logging for every field decision",
     )

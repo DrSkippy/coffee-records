@@ -127,9 +127,7 @@ def plot_data(
         logger.warning("No plottable series found in data")
         return
 
-    fig, axes = plt.subplots(
-        len(active), 1, figsize=(12, 3 * len(active)), sharex=True
-    )
+    fig, axes = plt.subplots(len(active), 1, figsize=(12, 3 * len(active)), sharex=True)
     ax_list: list[Any] = [axes] if len(active) == 1 else list(axes)
 
     fig.suptitle(title, fontsize=12)
@@ -169,9 +167,7 @@ def make_output_path(input_path: Path, shot_id: int | None) -> Path:
         if dt:
             name = f"shot_{shot_id}_{dt.strftime('%Y-%m-%d_%H%M%S')}.json"
         else:
-            logger.warning(
-                "Could not parse datetime from filename; using shot ID only"
-            )
+            logger.warning("Could not parse datetime from filename; using shot ID only")
             name = f"shot_{shot_id}.json"
         return input_path.parent / name
     return input_path.parent / f"{input_path.stem}_edited.json"
@@ -264,7 +260,9 @@ def main() -> None:
             if data.get(key):
                 all_times.extend(get_brew_time(item) for item in data[key])
 
-        start: float = args.start_time if args.start_time is not None else min(all_times)
+        start: float = (
+            args.start_time if args.start_time is not None else min(all_times)
+        )
         end: float = args.end_time if args.end_time is not None else max(all_times)
 
         for key in ALL_SERIES_KEYS:

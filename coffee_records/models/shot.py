@@ -3,7 +3,17 @@
 import enum
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, Float, ForeignKey, String, Text, func
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from coffee_records.database import Base
@@ -34,10 +44,10 @@ class Shot(Base):
     dose_weight: Mapped[float | None] = mapped_column(Float, nullable=True)
     pre_infusion_time: Mapped[str | None] = mapped_column(String(50), nullable=True)
     extraction_time: Mapped[float | None] = mapped_column(Float, nullable=True)
-    extraction_delta: Mapped[float | None] = mapped_column(Float, nullable=True, default=0.0)
-    scale_id: Mapped[int | None] = mapped_column(
-        ForeignKey("scales.id"), nullable=True
+    extraction_delta: Mapped[float | None] = mapped_column(
+        Float, nullable=True, default=0.0
     )
+    scale_id: Mapped[int | None] = mapped_column(ForeignKey("scales.id"), nullable=True)
     final_weight: Mapped[float | None] = mapped_column(Float, nullable=True)
     drink_type: Mapped[DrinkType | None] = mapped_column(
         Enum(DrinkType, name="drink_type"), nullable=True

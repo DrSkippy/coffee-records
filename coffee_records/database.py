@@ -1,6 +1,6 @@
 """SQLAlchemy engine, session factory, and declarative base."""
 
-from sqlalchemy import create_engine
+from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 
@@ -26,7 +26,7 @@ def init_db(database_url: str, pool_size: int = 5) -> None:
     _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
 
 
-def get_engine():  # type: ignore[return]
+def get_engine() -> Engine:
     """Return the initialized engine."""
     if _engine is None:
         raise RuntimeError("Database not initialized. Call init_db() first.")

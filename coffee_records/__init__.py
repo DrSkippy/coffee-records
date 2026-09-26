@@ -5,14 +5,13 @@ import logging.config
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
+from flask.typing import ResponseReturnValue
 
 from coffee_records.config import Config, load_config
 from coffee_records.database import init_db
 
 
-def create_app(
-    config: Config | None = None, database_url: str | None = None
-) -> Flask:
+def create_app(config: Config | None = None, database_url: str | None = None) -> Flask:
     """Create and configure the Flask application.
 
     Args:
@@ -38,7 +37,7 @@ def create_app(
 
     # API key authentication for all /api/* routes
     @app.before_request
-    def check_api_key() -> object | None:
+    def check_api_key() -> ResponseReturnValue | None:
         """Enforce X-API-Key header on /api/* routes when api_key is configured."""
         if request.path.startswith("/api/"):
             required_key = config.app.api_key
@@ -54,7 +53,7 @@ def create_app(
     from pydantic import ValidationError
 
     @app.errorhandler(ValidationError)
-    def handle_validation_error(exc: ValidationError) -> object:
+    def handle_validation_error(exc: ValidationError) -> ResponseReturnValue:
         """Return 422 for Pydantic validation failures."""
         return {"errors": exc.errors()}, 422
 
@@ -78,7 +77,7 @@ def create_app(
 
     @app.route("/", defaults={"path": ""})
     @app.route("/<path:path>")
-    def serve_spa(path: str) -> object:
+    def serve_spa(path: str) -> ResponseReturnValue:
         """Serve the React SPA or static assets.
 
         Args:

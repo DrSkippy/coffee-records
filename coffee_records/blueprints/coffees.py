@@ -2,8 +2,10 @@
 
 import uuid
 from pathlib import Path
+from typing import cast
 
 from flask import Blueprint, current_app, jsonify, request
+from flask.typing import ResponseReturnValue
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
@@ -20,7 +22,7 @@ ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
 def _cfg() -> Config:
     """Return the application config."""
-    return current_app.config["APP_CONFIG"]  # type: ignore[return-value]
+    return cast(Config, current_app.config["APP_CONFIG"])
 
 
 def _save_image(file: FileStorage, cfg: Config) -> str:
@@ -56,7 +58,7 @@ def _delete_image_file(filename: str, cfg: Config) -> None:
 
 
 @coffees_bp.get("")
-def list_coffees() -> object:
+def list_coffees() -> ResponseReturnValue:
     """List all coffees sorted by roast_date descending.
 
     Returns:
@@ -68,11 +70,13 @@ def list_coffees() -> object:
             .order_by(Coffee.roast_date.desc().nullslast(), Coffee.created_at.desc())
             .all()
         )
-        return jsonify([CoffeeResponse.model_validate(c).model_dump(mode="json") for c in coffees])
+        return jsonify(
+            [CoffeeResponse.model_validate(c).model_dump(mode="json") for c in coffees]
+        )
 
 
 @coffees_bp.post("")
-def create_coffee() -> object:
+def create_coffee() -> ResponseReturnValue:
     """Create a new coffee.
 
     Returns:
@@ -84,11 +88,14 @@ def create_coffee() -> object:
         session.add(coffee)
         session.commit()
         session.refresh(coffee)
-        return jsonify(CoffeeResponse.model_validate(coffee).model_dump(mode="json")), 201
+        return (
+            jsonify(CoffeeResponse.model_validate(coffee).model_dump(mode="json")),
+            201,
+        )
 
 
 @coffees_bp.get("/<int:coffee_id>")
-def get_coffee(coffee_id: int) -> object:
+def get_coffee(coffee_id: int) -> ResponseReturnValue:
     """Get a single coffee by ID.
 
     Args:
@@ -105,7 +112,7 @@ def get_coffee(coffee_id: int) -> object:
 
 
 @coffees_bp.put("/<int:coffee_id>")
-def update_coffee(coffee_id: int) -> object:
+def update_coffee(coffee_id: int) -> ResponseReturnValue:
     """Update a coffee.
 
     Args:
@@ -127,7 +134,7 @@ def update_coffee(coffee_id: int) -> object:
 
 
 @coffees_bp.delete("/<int:coffee_id>")
-def delete_coffee(coffee_id: int) -> object:
+def delete_coffee(coffee_id: int) -> ResponseReturnValue:
     """Delete a coffee. Returns 409 if shots reference this coffee.
 
     Args:
@@ -143,7 +150,11 @@ def delete_coffee(coffee_id: int) -> object:
         shot_count = session.query(Shot).filter(Shot.coffee_id == coffee_id).count()
         if shot_count > 0:
             return (
-                jsonify({"error": f"Cannot delete: {shot_count} shot(s) reference this coffee"}),
+                jsonify(
+                    {
+                        "error": f"Cannot delete: {shot_count} shot(s) reference this coffee"
+                    }
+                ),
                 409,
             )
         session.delete(coffee)
@@ -152,7 +163,7 @@ def delete_coffee(coffee_id: int) -> object:
 
 
 @coffees_bp.post("/<int:coffee_id>/image")
-def upload_coffee_image(coffee_id: int) -> object:
+def upload_coffee_image(coffee_id: int) -> ResponseReturnValue:
     """Upload a label photo for a coffee.
 
     Args:
@@ -180,7 +191,7 @@ def upload_coffee_image(coffee_id: int) -> object:
 
 
 @coffees_bp.delete("/<int:coffee_id>/image")
-def delete_coffee_image(coffee_id: int) -> object:
+def delete_coffee_image(coffee_id: int) -> ResponseReturnValue:
     """Remove the label photo for a coffee.
 
     Args:

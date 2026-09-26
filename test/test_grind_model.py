@@ -5,7 +5,6 @@ from datetime import date
 import pytest
 from flask.testing import FlaskClient
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -14,10 +13,14 @@ from flask.testing import FlaskClient
 def _create_coffee(client: FlaskClient, roast_date: str = "2026-01-01") -> int:
     resp = client.post(
         "/api/coffees",
-        json={"name": "Test Coffee", "roaster": "Test Roaster", "roast_date": roast_date},
+        json={
+            "name": "Test Coffee",
+            "roaster": "Test Roaster",
+            "roast_date": roast_date,
+        },
     )
     assert resp.status_code == 201
-    return resp.get_json()["id"]  # type: ignore[index]
+    return int(resp.get_json()["id"])
 
 
 def _create_grinder(client: FlaskClient) -> int:
@@ -26,7 +29,7 @@ def _create_grinder(client: FlaskClient) -> int:
         json={"make": "Mazzer", "model": "Mini", "type": "flat"},
     )
     assert resp.status_code == 201
-    return resp.get_json()["id"]  # type: ignore[index]
+    return int(resp.get_json()["id"])
 
 
 def _create_shot(client: FlaskClient, **kwargs: object) -> dict:  # type: ignore[type-arg]
@@ -43,7 +46,7 @@ def _create_shot(client: FlaskClient, **kwargs: object) -> dict:  # type: ignore
     defaults.update(kwargs)
     resp = client.post("/api/shots", json=defaults)
     assert resp.status_code == 201
-    return resp.get_json()  # type: ignore[return-value]
+    return resp.get_json()  # type: ignore[no-any-return]
 
 
 def _setup_training_data(client: FlaskClient) -> tuple[int, int, int]:
@@ -144,7 +147,7 @@ def test_fit_grind_model_basic(app: object, client: FlaskClient) -> None:
             result = fit_grind_model(session, grinder_id)
 
     assert result["grinder_id"] == grinder_id
-    assert result["n_shots_used"] >= 6   # 3 per coffee × 2 coffees
+    assert result["n_shots_used"] >= 6  # 3 per coffee × 2 coffees
     assert result["n_coffees"] == 2
     assert "a0" in result
     assert "a4" in result
@@ -173,7 +176,9 @@ def test_fit_grind_model_excludes_drip(app: object, client: FlaskClient) -> None
     # Add drip shots — these must NOT appear in n_shots_used
     coffee_id = _create_coffee(client, roast_date="2026-01-01")
     for _ in range(3):
-        _create_shot(client, coffee_id=coffee_id, grinder_id=grinder_id, drink_type="drip")
+        _create_shot(
+            client, coffee_id=coffee_id, grinder_id=grinder_id, drink_type="drip"
+        )
 
     with flask_app.app_context():
         with get_session() as session:
@@ -196,7 +201,9 @@ def test_fit_grind_model_excludes_aeropress(app: object, client: FlaskClient) ->
 
     coffee_id = _create_coffee(client, roast_date="2026-01-01")
     for _ in range(3):
-        _create_shot(client, coffee_id=coffee_id, grinder_id=grinder_id, drink_type="aeropress")
+        _create_shot(
+            client, coffee_id=coffee_id, grinder_id=grinder_id, drink_type="aeropress"
+        )
 
     with flask_app.app_context():
         with get_session() as session:
@@ -219,7 +226,9 @@ def test_fit_grind_model_excludes_first_day(app: object, client: FlaskClient) ->
 
     # 1 shot on first day + 3 on later days for this coffee
     first_day_date = "2026-02-01"
-    _create_shot(client, date=first_day_date, coffee_id=coffee_id, grinder_id=grinder_id)
+    _create_shot(
+        client, date=first_day_date, coffee_id=coffee_id, grinder_id=grinder_id
+    )
     for day in ["2026-02-10", "2026-02-15", "2026-02-20"]:
         _create_shot(client, date=day, coffee_id=coffee_id, grinder_id=grinder_id)
 

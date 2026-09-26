@@ -1,6 +1,7 @@
 """Equipment blueprint — /api/grinders, /api/brewing-devices, /api/scales."""
 
 from flask import Blueprint, jsonify, request
+from flask.typing import ResponseReturnValue
 
 from coffee_records.database import get_session
 from coffee_records.models.equipment import BrewingDevice, Grinder, Scale
@@ -24,15 +25,20 @@ equipment_bp = Blueprint("equipment", __name__, url_prefix="/api")
 
 
 @equipment_bp.get("/grinders")
-def list_grinders() -> object:
+def list_grinders() -> ResponseReturnValue:
     """List all grinders."""
     with get_session() as session:
         grinders = session.query(Grinder).order_by(Grinder.make, Grinder.model).all()
-        return jsonify([GrinderResponse.model_validate(g).model_dump(mode="json") for g in grinders])
+        return jsonify(
+            [
+                GrinderResponse.model_validate(g).model_dump(mode="json")
+                for g in grinders
+            ]
+        )
 
 
 @equipment_bp.post("/grinders")
-def create_grinder() -> object:
+def create_grinder() -> ResponseReturnValue:
     """Create a grinder."""
     payload = GrinderCreate.model_validate(request.get_json())
     with get_session() as session:
@@ -40,11 +46,14 @@ def create_grinder() -> object:
         session.add(grinder)
         session.commit()
         session.refresh(grinder)
-        return jsonify(GrinderResponse.model_validate(grinder).model_dump(mode="json")), 201
+        return (
+            jsonify(GrinderResponse.model_validate(grinder).model_dump(mode="json")),
+            201,
+        )
 
 
 @equipment_bp.get("/grinders/<int:grinder_id>")
-def get_grinder(grinder_id: int) -> object:
+def get_grinder(grinder_id: int) -> ResponseReturnValue:
     """Get a grinder by ID."""
     with get_session() as session:
         grinder = session.get(Grinder, grinder_id)
@@ -54,7 +63,7 @@ def get_grinder(grinder_id: int) -> object:
 
 
 @equipment_bp.put("/grinders/<int:grinder_id>")
-def update_grinder(grinder_id: int) -> object:
+def update_grinder(grinder_id: int) -> ResponseReturnValue:
     """Update a grinder."""
     payload = GrinderUpdate.model_validate(request.get_json())
     with get_session() as session:
@@ -69,7 +78,7 @@ def update_grinder(grinder_id: int) -> object:
 
 
 @equipment_bp.delete("/grinders/<int:grinder_id>")
-def delete_grinder(grinder_id: int) -> object:
+def delete_grinder(grinder_id: int) -> ResponseReturnValue:
     """Delete a grinder. Returns 409 if shots reference it."""
     with get_session() as session:
         grinder = session.get(Grinder, grinder_id)
@@ -77,7 +86,12 @@ def delete_grinder(grinder_id: int) -> object:
             return jsonify({"error": "Grinder not found"}), 404
         count = session.query(Shot).filter(Shot.grinder_id == grinder_id).count()
         if count > 0:
-            return jsonify({"error": f"Cannot delete: {count} shot(s) reference this grinder"}), 409
+            return (
+                jsonify(
+                    {"error": f"Cannot delete: {count} shot(s) reference this grinder"}
+                ),
+                409,
+            )
         session.delete(grinder)
         session.commit()
         return "", 204
@@ -87,19 +101,24 @@ def delete_grinder(grinder_id: int) -> object:
 
 
 @equipment_bp.get("/brewing-devices")
-def list_brewing_devices() -> object:
+def list_brewing_devices() -> ResponseReturnValue:
     """List all brewing devices."""
     with get_session() as session:
         devices = (
-            session.query(BrewingDevice).order_by(BrewingDevice.make, BrewingDevice.model).all()
+            session.query(BrewingDevice)
+            .order_by(BrewingDevice.make, BrewingDevice.model)
+            .all()
         )
         return jsonify(
-            [BrewingDeviceResponse.model_validate(d).model_dump(mode="json") for d in devices]
+            [
+                BrewingDeviceResponse.model_validate(d).model_dump(mode="json")
+                for d in devices
+            ]
         )
 
 
 @equipment_bp.post("/brewing-devices")
-def create_brewing_device() -> object:
+def create_brewing_device() -> ResponseReturnValue:
     """Create a brewing device."""
     payload = BrewingDeviceCreate.model_validate(request.get_json())
     with get_session() as session:
@@ -108,23 +127,27 @@ def create_brewing_device() -> object:
         session.commit()
         session.refresh(device)
         return (
-            jsonify(BrewingDeviceResponse.model_validate(device).model_dump(mode="json")),
+            jsonify(
+                BrewingDeviceResponse.model_validate(device).model_dump(mode="json")
+            ),
             201,
         )
 
 
 @equipment_bp.get("/brewing-devices/<int:device_id>")
-def get_brewing_device(device_id: int) -> object:
+def get_brewing_device(device_id: int) -> ResponseReturnValue:
     """Get a brewing device by ID."""
     with get_session() as session:
         device = session.get(BrewingDevice, device_id)
         if device is None:
             return jsonify({"error": "Brewing device not found"}), 404
-        return jsonify(BrewingDeviceResponse.model_validate(device).model_dump(mode="json"))
+        return jsonify(
+            BrewingDeviceResponse.model_validate(device).model_dump(mode="json")
+        )
 
 
 @equipment_bp.put("/brewing-devices/<int:device_id>")
-def update_brewing_device(device_id: int) -> object:
+def update_brewing_device(device_id: int) -> ResponseReturnValue:
     """Update a brewing device."""
     payload = BrewingDeviceUpdate.model_validate(request.get_json())
     with get_session() as session:
@@ -135,11 +158,13 @@ def update_brewing_device(device_id: int) -> object:
             setattr(device, field, value)
         session.commit()
         session.refresh(device)
-        return jsonify(BrewingDeviceResponse.model_validate(device).model_dump(mode="json"))
+        return jsonify(
+            BrewingDeviceResponse.model_validate(device).model_dump(mode="json")
+        )
 
 
 @equipment_bp.delete("/brewing-devices/<int:device_id>")
-def delete_brewing_device(device_id: int) -> object:
+def delete_brewing_device(device_id: int) -> ResponseReturnValue:
     """Delete a brewing device. Returns 409 if shots reference it."""
     with get_session() as session:
         device = session.get(BrewingDevice, device_id)
@@ -148,7 +173,9 @@ def delete_brewing_device(device_id: int) -> object:
         count = session.query(Shot).filter(Shot.device_id == device_id).count()
         if count > 0:
             return (
-                jsonify({"error": f"Cannot delete: {count} shot(s) reference this device"}),
+                jsonify(
+                    {"error": f"Cannot delete: {count} shot(s) reference this device"}
+                ),
                 409,
             )
         session.delete(device)
@@ -160,15 +187,17 @@ def delete_brewing_device(device_id: int) -> object:
 
 
 @equipment_bp.get("/scales")
-def list_scales() -> object:
+def list_scales() -> ResponseReturnValue:
     """List all scales."""
     with get_session() as session:
         scales = session.query(Scale).order_by(Scale.make, Scale.model).all()
-        return jsonify([ScaleResponse.model_validate(s).model_dump(mode="json") for s in scales])
+        return jsonify(
+            [ScaleResponse.model_validate(s).model_dump(mode="json") for s in scales]
+        )
 
 
 @equipment_bp.post("/scales")
-def create_scale() -> object:
+def create_scale() -> ResponseReturnValue:
     """Create a scale."""
     payload = ScaleCreate.model_validate(request.get_json())
     with get_session() as session:
@@ -180,7 +209,7 @@ def create_scale() -> object:
 
 
 @equipment_bp.get("/scales/<int:scale_id>")
-def get_scale(scale_id: int) -> object:
+def get_scale(scale_id: int) -> ResponseReturnValue:
     """Get a scale by ID."""
     with get_session() as session:
         scale = session.get(Scale, scale_id)
@@ -190,7 +219,7 @@ def get_scale(scale_id: int) -> object:
 
 
 @equipment_bp.put("/scales/<int:scale_id>")
-def update_scale(scale_id: int) -> object:
+def update_scale(scale_id: int) -> ResponseReturnValue:
     """Update a scale."""
     payload = ScaleUpdate.model_validate(request.get_json())
     with get_session() as session:
@@ -205,7 +234,7 @@ def update_scale(scale_id: int) -> object:
 
 
 @equipment_bp.delete("/scales/<int:scale_id>")
-def delete_scale(scale_id: int) -> object:
+def delete_scale(scale_id: int) -> ResponseReturnValue:
     """Delete a scale. Returns 409 if shots reference it."""
     with get_session() as session:
         scale = session.get(Scale, scale_id)
@@ -213,7 +242,12 @@ def delete_scale(scale_id: int) -> object:
             return jsonify({"error": "Scale not found"}), 404
         count = session.query(Shot).filter(Shot.scale_id == scale_id).count()
         if count > 0:
-            return jsonify({"error": f"Cannot delete: {count} shot(s) reference this scale"}), 409
+            return (
+                jsonify(
+                    {"error": f"Cannot delete: {count} shot(s) reference this scale"}
+                ),
+                409,
+            )
         session.delete(scale)
         session.commit()
         return "", 204

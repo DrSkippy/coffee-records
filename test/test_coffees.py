@@ -9,7 +9,7 @@ def _create_coffee(client: FlaskClient, **kwargs: object) -> dict:  # type: igno
     data = {"name": "Test Blend", "roaster": "Roaster Co", **kwargs}
     resp = client.post("/api/coffees", json=data)
     assert resp.status_code == 201
-    return resp.get_json()  # type: ignore[return-value]
+    return resp.get_json()  # type: ignore[no-any-return]
 
 
 def test_list_coffees_empty(client: FlaskClient) -> None:

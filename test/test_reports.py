@@ -9,12 +9,12 @@ def _create_shot(client: FlaskClient, **kwargs: object) -> dict:  # type: ignore
     data = {"date": "2026-03-20", "maker": "Scott", **kwargs}
     resp = client.post("/api/shots", json=data)
     assert resp.status_code == 201
-    return resp.get_json()  # type: ignore[return-value]
+    return resp.get_json()  # type: ignore[no-any-return]
 
 
 def _create_coffee(client: FlaskClient) -> int:
     resp = client.post("/api/coffees", json={"name": "Blend", "roaster": "Roaster"})
-    return resp.get_json()["id"]  # type: ignore[index]
+    return int(resp.get_json()["id"])
 
 
 def test_dose_yield_empty(client: FlaskClient) -> None:
@@ -48,7 +48,9 @@ def test_shots_per_day(client: FlaskClient) -> None:
     _create_shot(client, date="2026-03-18")
     _create_shot(client, date="2026-03-18")
     _create_shot(client, date="2026-03-19")
-    resp = client.get("/api/reports/shots-per-day?date_from=2026-03-01&date_to=2026-03-31")
+    resp = client.get(
+        "/api/reports/shots-per-day?date_from=2026-03-01&date_to=2026-03-31"
+    )
     data = resp.get_json()
     counts = {row["date"]: row["count"] for row in data}
     assert counts["2026-03-18"] == 2
@@ -59,7 +61,9 @@ def test_extraction_trends(client: FlaskClient) -> None:
     """Extraction-trends report returns extraction times."""
     _create_shot(client, extraction_time=28.5)
     _create_shot(client)  # no extraction_time
-    resp = client.get("/api/reports/extraction-trends?date_from=2026-01-01&date_to=2026-12-31")
+    resp = client.get(
+        "/api/reports/extraction-trends?date_from=2026-01-01&date_to=2026-12-31"
+    )
     data = resp.get_json()
     assert len(data) == 1
     assert data[0]["extraction_time"] == 28.5
@@ -68,8 +72,20 @@ def test_extraction_trends(client: FlaskClient) -> None:
 def test_by_coffee_stats(client: FlaskClient) -> None:
     """By-coffee report computes aggregate stats correctly."""
     coffee_id = _create_coffee(client)
-    _create_shot(client, coffee_id=coffee_id, dose_weight=18.0, final_weight=36.0, extraction_time=28.0)
-    _create_shot(client, coffee_id=coffee_id, dose_weight=19.0, final_weight=38.0, extraction_time=30.0)
+    _create_shot(
+        client,
+        coffee_id=coffee_id,
+        dose_weight=18.0,
+        final_weight=36.0,
+        extraction_time=28.0,
+    )
+    _create_shot(
+        client,
+        coffee_id=coffee_id,
+        dose_weight=19.0,
+        final_weight=38.0,
+        extraction_time=30.0,
+    )
     _create_shot(client)  # different coffee, should not appear
 
     resp = client.get(
@@ -105,7 +121,7 @@ def _create_grinder(client: FlaskClient) -> int:
         "/api/grinders", json={"make": "Acme", "model": "G1", "type": "flat"}
     )
     assert resp.status_code == 201
-    return resp.get_json()["id"]  # type: ignore[index]
+    return int(resp.get_json()["id"])
 
 
 def _create_device(client: FlaskClient) -> int:
@@ -114,7 +130,7 @@ def _create_device(client: FlaskClient) -> int:
         json={"make": "Acme", "model": "M1", "type": "espresso"},
     )
     assert resp.status_code == 201
-    return resp.get_json()["id"]  # type: ignore[index]
+    return int(resp.get_json()["id"])
 
 
 def test_target_shot_time_no_coffee_id(client: FlaskClient) -> None:
@@ -253,9 +269,7 @@ def test_target_shot_time_device_filter(client: FlaskClient) -> None:
 def test_target_shot_time_excludes_drip(client: FlaskClient) -> None:
     """Drip shots are excluded from the WMA calculation."""
     coffee_id = _create_coffee(client)
-    _create_shot(
-        client, coffee_id=coffee_id, extraction_time=60.0, drink_type="drip"
-    )
+    _create_shot(client, coffee_id=coffee_id, extraction_time=60.0, drink_type="drip")
     _create_shot(
         client, coffee_id=coffee_id, extraction_time=30.0, drink_type="americano"
     )
@@ -272,7 +286,9 @@ def test_target_shot_time_excludes_drip(client: FlaskClient) -> None:
 
 def test_shots_per_grinder_empty(client: FlaskClient) -> None:
     """Returns empty list when no shots exist."""
-    resp = client.get("/api/reports/shots-per-grinder?date_from=2026-01-01&date_to=2026-12-31")
+    resp = client.get(
+        "/api/reports/shots-per-grinder?date_from=2026-01-01&date_to=2026-12-31"
+    )
     assert resp.status_code == 200
     assert resp.get_json() == []
 
@@ -284,7 +300,9 @@ def test_shots_per_grinder_basic_grouping(client: FlaskClient) -> None:
     _create_shot(client, grinder_id=grinder_a)
     _create_shot(client, grinder_id=grinder_a)
     _create_shot(client, grinder_id=grinder_b)
-    resp = client.get("/api/reports/shots-per-grinder?date_from=2026-01-01&date_to=2026-12-31")
+    resp = client.get(
+        "/api/reports/shots-per-grinder?date_from=2026-01-01&date_to=2026-12-31"
+    )
     data = resp.get_json()
     counts = {row["grinder_id"]: row["count"] for row in data}
     assert counts[grinder_a] == 2
@@ -304,7 +322,9 @@ def test_shots_per_grinder_sorted_descending(client: FlaskClient) -> None:
     _create_shot(client, grinder_id=grinder_b)
     _create_shot(client, grinder_id=grinder_b)
     _create_shot(client, grinder_id=grinder_b)
-    resp = client.get("/api/reports/shots-per-grinder?date_from=2026-01-01&date_to=2026-12-31")
+    resp = client.get(
+        "/api/reports/shots-per-grinder?date_from=2026-01-01&date_to=2026-12-31"
+    )
     data = resp.get_json()
     assert data[0]["grinder_id"] == grinder_b
     assert data[0]["count"] == 3
@@ -317,7 +337,9 @@ def test_shots_per_grinder_date_filter(client: FlaskClient) -> None:
     grinder = _create_grinder(client)
     _create_shot(client, grinder_id=grinder, date="2026-01-15")  # in range
     _create_shot(client, grinder_id=grinder, date="2025-12-31")  # before range
-    resp = client.get("/api/reports/shots-per-grinder?date_from=2026-01-01&date_to=2026-12-31")
+    resp = client.get(
+        "/api/reports/shots-per-grinder?date_from=2026-01-01&date_to=2026-12-31"
+    )
     data = resp.get_json()
     assert len(data) == 1
     assert data[0]["count"] == 1
@@ -326,7 +348,9 @@ def test_shots_per_grinder_date_filter(client: FlaskClient) -> None:
 def test_shots_per_grinder_excludes_no_grinder(client: FlaskClient) -> None:
     """Shots without a grinder_id do not appear in results."""
     _create_shot(client)  # no grinder
-    resp = client.get("/api/reports/shots-per-grinder?date_from=2026-01-01&date_to=2026-12-31")
+    resp = client.get(
+        "/api/reports/shots-per-grinder?date_from=2026-01-01&date_to=2026-12-31"
+    )
     assert resp.get_json() == []
 
 
@@ -391,7 +415,10 @@ def test_api_key_enforced_when_configured(app: object) -> None:
     cfg = Config(app=AppConfig(debug=False, secret_key="test", api_key="secret123"))
     # Bypass env_override by passing Config directly.
     protected_app = create_app(
-        config=cfg, database_url=flask_app.config.get("SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
+        config=cfg,
+        database_url=flask_app.config.get(
+            "SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:"
+        ),
     )
     protected_app.config["TESTING"] = True
     test_client = protected_app.test_client()

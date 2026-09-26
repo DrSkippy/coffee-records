@@ -12,7 +12,10 @@ from sqlalchemy.orm import Session, joinedload
 
 from coffee_records.models.coffee import Coffee
 from coffee_records.models.equipment import BrewingDevice, Grinder
-from coffee_records.models.grind_model import GrindModelCoffeeIntercept, GrindModelTraining
+from coffee_records.models.grind_model import (
+    GrindModelCoffeeIntercept,
+    GrindModelTraining,
+)
 from coffee_records.models.shot import DrinkType, Shot
 
 logger = logging.getLogger(__name__)
@@ -132,9 +135,18 @@ def shots_per_grinder(
         q = q.filter(Shot.coffee_id == coffee_id)
     if device_id is not None:
         q = q.filter(Shot.device_id == device_id)
-    rows = q.group_by(Shot.grinder_id, Grinder.make, Grinder.model).order_by(func.count(Shot.id).desc()).all()
+    rows = (
+        q.group_by(Shot.grinder_id, Grinder.make, Grinder.model)
+        .order_by(func.count(Shot.id).desc())
+        .all()
+    )
     return [
-        {"grinder_id": row.grinder_id, "make": row.make, "model": row.model, "count": row.count}
+        {
+            "grinder_id": row.grinder_id,
+            "make": row.make,
+            "model": row.model,
+            "count": row.count,
+        }
         for row in rows
     ]
 
@@ -165,9 +177,8 @@ def shots_per_day(
         date_from = date_from or d_from
         date_to = date_to or d_to
 
-    q = (
-        session.query(Shot.date, func.count(Shot.id).label("count"))
-        .filter(Shot.date >= date_from, Shot.date <= date_to)
+    q = session.query(Shot.date, func.count(Shot.id).label("count")).filter(
+        Shot.date >= date_from, Shot.date <= date_to
     )
     if coffee_id is not None:
         q = q.filter(Shot.coffee_id == coffee_id)
@@ -276,7 +287,9 @@ def by_coffee(
     ratios = [
         s.final_weight / s.dose_weight
         for s in rows
-        if s.final_weight is not None and s.dose_weight is not None and s.dose_weight > 0
+        if s.final_weight is not None
+        and s.dose_weight is not None
+        and s.dose_weight > 0
     ]
 
     def avg(values: list[float]) -> float | None:
@@ -544,17 +557,16 @@ def grind_regression(
         )
         if mazzer is not None:
             resolved_grinder_id = mazzer.id
-            logger.debug("grind_regression: defaulting to Mazzer grinder id=%d", mazzer.id)
+            logger.debug(
+                "grind_regression: defaulting to Mazzer grinder id=%d", mazzer.id
+            )
 
     # Fetch shots
-    q = (
-        session.query(Shot)
-        .filter(
-            Shot.coffee_id == coffee_id,
-            Shot.grind_setting.isnot(None),
-            Shot.grinder_temp_before.isnot(None),
-            Shot.grinder_id.isnot(None),
-        )
+    q = session.query(Shot).filter(
+        Shot.coffee_id == coffee_id,
+        Shot.grind_setting.isnot(None),
+        Shot.grinder_temp_before.isnot(None),
+        Shot.grinder_id.isnot(None),
     )
     if resolved_grinder_id is not None:
         q = q.filter(Shot.grinder_id == resolved_grinder_id)
@@ -585,8 +597,16 @@ def grind_regression(
 
         # Build normal equations AtA * p = Atb
         AtA: list[list[float]] = [
-            [sum(a * b for a, b in zip(x1s, x1s)), sum(a * b for a, b in zip(x1s, x2s)), sum(x1s)],
-            [sum(a * b for a, b in zip(x1s, x2s)), sum(a * b for a, b in zip(x2s, x2s)), sum(x2s)],
+            [
+                sum(a * b for a, b in zip(x1s, x1s)),
+                sum(a * b for a, b in zip(x1s, x2s)),
+                sum(x1s),
+            ],
+            [
+                sum(a * b for a, b in zip(x1s, x2s)),
+                sum(a * b for a, b in zip(x2s, x2s)),
+                sum(x2s),
+            ],
             [sum(x1s), sum(x2s), float(n)],
         ]
         Atb: list[float] = [
@@ -598,7 +618,9 @@ def grind_regression(
         try:
             a_coef, b_coef, c_coef = _solve_3x3(AtA, Atb)
         except ValueError:
-            logger.warning("grind_regression: singular matrix for grinder_id=%d — skipping", gid)
+            logger.warning(
+                "grind_regression: singular matrix for grinder_id=%d — skipping", gid
+            )
             continue
 
         y_mean = sum(ys) / n
@@ -608,7 +630,9 @@ def grind_regression(
         r_squared: float | None = round(1 - ss_res / ss_tot, 4) if ss_tot != 0 else None
 
         grinder_obj = grinder_rows.get(gid)
-        grinder_label = f"{grinder_obj.make} {grinder_obj.model}" if grinder_obj else str(gid)
+        grinder_label = (
+            f"{grinder_obj.make} {grinder_obj.model}" if grinder_obj else str(gid)
+        )
 
         points: list[dict[str, Any]] = []
         for (shot, y), x1, x2, y_pred in zip(pts, x1s, x2s, y_preds):
@@ -750,7 +774,9 @@ def fit_grind_model(
     first_dates = _first_date_per_coffee(all_shots)
 
     # Compute target_shot_time per coffee (for the extraction_time feature)
-    unique_coffee_ids_all = list({s.coffee_id for s in all_shots if s.coffee_id is not None})
+    unique_coffee_ids_all = list(
+        {s.coffee_id for s in all_shots if s.coffee_id is not None}
+    )
     target_time_per_coffee: dict[int, float | None] = {
         cid: target_shot_time_wma(session, cid, grinder_id=grinder_id)[0]
         for cid in unique_coffee_ids_all
@@ -973,7 +999,9 @@ def get_grind_model_params(
     if training_id is not None:
         q = q.filter(GrindModelTraining.id == training_id)
     elif as_of is not None:
-        cutoff = datetime(as_of.year, as_of.month, as_of.day, 23, 59, 59, tzinfo=timezone.utc)
+        cutoff = datetime(
+            as_of.year, as_of.month, as_of.day, 23, 59, 59, tzinfo=timezone.utc
+        )
         q = q.filter(GrindModelTraining.trained_at <= cutoff)
 
     training = q.order_by(GrindModelTraining.trained_at.desc()).first()
@@ -987,16 +1015,18 @@ def get_grind_model_params(
 
     coffee_names = {
         obj.id: obj.name
-        for obj in session.query(Coffee).filter(Coffee.id.in_(coffee_ids_in_model)).all()
+        for obj in session.query(Coffee)
+        .filter(Coffee.id.in_(coffee_ids_in_model))
+        .all()
     }
 
     # Per-coffee target shot times
     target_times = []
     target_time_map: dict[int, float | None] = {}
-    for cid in coffee_ids_in_model:
-        wma, _ = target_shot_time_wma(session, cid, grinder_id=grinder_id)
-        target_time_map[cid] = wma
-        target_times.append({"coffee_id": cid, "target_shot_time": wma})
+    for model_cid in coffee_ids_in_model:
+        wma, _ = target_shot_time_wma(session, model_cid, grinder_id=grinder_id)
+        target_time_map[model_cid] = wma
+        target_times.append({"coffee_id": model_cid, "target_shot_time": wma})
 
     # Re-query shots for plotting (all current qualifying shots for coffees in model)
     shots = (

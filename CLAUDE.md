@@ -61,7 +61,7 @@ project-root/
 | Postgresql    | `192.168.1.91`      | 5434  | Primary database               |
 | Ollama (LLM)  | `192.168.1.90`      | 11434 | Local LLM inference server     |
 
-- **MySQL** is the default database. Use `PyMySQL` or `mysqlclient` as the driver. SQLAlchemy is fine as an ORM when appropriate.
+- **PostgreSQL** is the database for this project (host cluster at `192.168.1.91:5434`). The driver is `psycopg2`, with SQLAlchemy as the ORM.
 - **Ollama** provides local LLM access. Base URL: `http://192.168.1.90:11434/`
   - Use the Ollama REST API or the `ollama` Python client library.
   - Prefer local models over external API calls when feasible.

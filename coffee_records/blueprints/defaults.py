@@ -3,6 +3,7 @@
 from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
+from flask.typing import ResponseReturnValue
 
 from coffee_records.database import get_session
 from coffee_records.models.settings import ShotDefaults
@@ -26,7 +27,7 @@ _SEED_DEFAULTS: dict[str, object] = dict(
 
 
 @defaults_bp.get("")
-def get_defaults() -> object:
+def get_defaults() -> ResponseReturnValue:
     """Return the current shot defaults, creating the singleton row if absent."""
     with get_session() as session:
         row = session.get(ShotDefaults, 1)
@@ -39,7 +40,7 @@ def get_defaults() -> object:
 
 
 @defaults_bp.put("")
-def update_defaults() -> object:
+def update_defaults() -> ResponseReturnValue:
     """Update the shot defaults (upsert at id=1)."""
     payload = ShotDefaultsUpdate.model_validate(request.get_json())
     with get_session() as session:

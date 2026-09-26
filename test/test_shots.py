@@ -5,27 +5,35 @@ from flask.testing import FlaskClient
 
 def _make_coffee(client: FlaskClient) -> int:
     resp = client.post("/api/coffees", json={"name": "Blend", "roaster": "Roaster"})
-    return resp.get_json()["id"]  # type: ignore[index]
+    return int(resp.get_json()["id"])
 
 
 def _make_grinder(client: FlaskClient) -> int:
-    resp = client.post("/api/grinders", json={"make": "Baratza", "model": "Vario", "type": "flat"})
-    return resp.get_json()["id"]  # type: ignore[index]
+    resp = client.post(
+        "/api/grinders", json={"make": "Baratza", "model": "Vario", "type": "flat"}
+    )
+    return int(resp.get_json()["id"])
 
 
 def _make_mazzer(client: FlaskClient) -> int:
-    resp = client.post("/api/grinders", json={"make": "Mazzer", "model": "Mini", "type": "flat"})
-    return resp.get_json()["id"]  # type: ignore[index]
+    resp = client.post(
+        "/api/grinders", json={"make": "Mazzer", "model": "Mini", "type": "flat"}
+    )
+    return int(resp.get_json()["id"])
 
 
 def _make_option_o(client: FlaskClient) -> int:
-    resp = client.post("/api/grinders", json={"make": "Option-O", "model": "Lagom P64", "type": "flat"})
-    return resp.get_json()["id"]  # type: ignore[index]
+    resp = client.post(
+        "/api/grinders", json={"make": "Option-O", "model": "Lagom P64", "type": "flat"}
+    )
+    return int(resp.get_json()["id"])
 
 
 def _make_timemore(client: FlaskClient) -> int:
-    resp = client.post("/api/grinders", json={"make": "Timemore", "model": "C3", "type": "conical"})
-    return resp.get_json()["id"]  # type: ignore[index]
+    resp = client.post(
+        "/api/grinders", json={"make": "Timemore", "model": "C3", "type": "conical"}
+    )
+    return int(resp.get_json()["id"])
 
 
 def _make_device(client: FlaskClient) -> int:
@@ -33,19 +41,19 @@ def _make_device(client: FlaskClient) -> int:
         "/api/brewing-devices",
         json={"make": "Breville", "model": "Barista", "type": "espresso"},
     )
-    return resp.get_json()["id"]  # type: ignore[index]
+    return int(resp.get_json()["id"])
 
 
 def _make_scale(client: FlaskClient) -> int:
     resp = client.post("/api/scales", json={"make": "Acaia", "model": "Pearl"})
-    return resp.get_json()["id"]  # type: ignore[index]
+    return int(resp.get_json()["id"])
 
 
 def _create_shot(client: FlaskClient, **kwargs: object) -> dict:  # type: ignore[type-arg]
     data = {"date": "2026-03-20", "maker": "Scott", **kwargs}
     resp = client.post("/api/shots", json=data)
     assert resp.status_code == 201
-    return resp.get_json()  # type: ignore[return-value]
+    return resp.get_json()  # type: ignore[no-any-return]
 
 
 def test_create_shot_minimal(client: FlaskClient) -> None:
@@ -178,7 +186,12 @@ def test_mazzer_valid_grind_setting(client: FlaskClient) -> None:
     grinder_id = _make_mazzer(client)
     resp = client.post(
         "/api/shots",
-        json={"date": "2026-03-20", "maker": "Scott", "grinder_id": grinder_id, "grind_setting": "8+5 1/2"},
+        json={
+            "date": "2026-03-20",
+            "maker": "Scott",
+            "grinder_id": grinder_id,
+            "grind_setting": "8+5 1/2",
+        },
     )
     assert resp.status_code == 201
     assert resp.get_json()["grind_setting"] == "8+5 1/2"
@@ -189,7 +202,12 @@ def test_mazzer_invalid_grind_setting(client: FlaskClient) -> None:
     grinder_id = _make_mazzer(client)
     resp = client.post(
         "/api/shots",
-        json={"date": "2026-03-20", "maker": "Scott", "grinder_id": grinder_id, "grind_setting": "19.5"},
+        json={
+            "date": "2026-03-20",
+            "maker": "Scott",
+            "grinder_id": grinder_id,
+            "grind_setting": "19.5",
+        },
     )
     assert resp.status_code == 422
 
@@ -199,7 +217,12 @@ def test_option_o_valid_grind_setting(client: FlaskClient) -> None:
     grinder_id = _make_option_o(client)
     resp = client.post(
         "/api/shots",
-        json={"date": "2026-03-20", "maker": "Scott", "grinder_id": grinder_id, "grind_setting": "19.5"},
+        json={
+            "date": "2026-03-20",
+            "maker": "Scott",
+            "grinder_id": grinder_id,
+            "grind_setting": "19.5",
+        },
     )
     assert resp.status_code == 201
     assert resp.get_json()["grind_setting"] == "19.5"
@@ -210,7 +233,12 @@ def test_option_o_valid_whole_number(client: FlaskClient) -> None:
     grinder_id = _make_option_o(client)
     resp = client.post(
         "/api/shots",
-        json={"date": "2026-03-20", "maker": "Scott", "grinder_id": grinder_id, "grind_setting": "20"},
+        json={
+            "date": "2026-03-20",
+            "maker": "Scott",
+            "grinder_id": grinder_id,
+            "grind_setting": "20",
+        },
     )
     assert resp.status_code == 201
 
@@ -220,7 +248,12 @@ def test_option_o_invalid_grind_setting(client: FlaskClient) -> None:
     grinder_id = _make_option_o(client)
     resp = client.post(
         "/api/shots",
-        json={"date": "2026-03-20", "maker": "Scott", "grinder_id": grinder_id, "grind_setting": "8+5 1/2"},
+        json={
+            "date": "2026-03-20",
+            "maker": "Scott",
+            "grinder_id": grinder_id,
+            "grind_setting": "8+5 1/2",
+        },
     )
     assert resp.status_code == 422
 
@@ -230,7 +263,12 @@ def test_timemore_valid_grind_setting(client: FlaskClient) -> None:
     grinder_id = _make_timemore(client)
     resp = client.post(
         "/api/shots",
-        json={"date": "2026-03-20", "maker": "Scott", "grinder_id": grinder_id, "grind_setting": "15.5"},
+        json={
+            "date": "2026-03-20",
+            "maker": "Scott",
+            "grinder_id": grinder_id,
+            "grind_setting": "15.5",
+        },
     )
     assert resp.status_code == 201
 
@@ -240,7 +278,12 @@ def test_baratza_valid_grind_setting(client: FlaskClient) -> None:
     grinder_id = _make_grinder(client)  # Baratza Vario
     resp = client.post(
         "/api/shots",
-        json={"date": "2026-03-20", "maker": "Scott", "grinder_id": grinder_id, "grind_setting": "12.0"},
+        json={
+            "date": "2026-03-20",
+            "maker": "Scott",
+            "grinder_id": grinder_id,
+            "grind_setting": "12.0",
+        },
     )
     assert resp.status_code == 201
 
@@ -250,7 +293,12 @@ def test_baratza_invalid_grind_setting(client: FlaskClient) -> None:
     grinder_id = _make_grinder(client)  # Baratza Vario
     resp = client.post(
         "/api/shots",
-        json={"date": "2026-03-20", "maker": "Scott", "grinder_id": grinder_id, "grind_setting": "8+5 1/2"},
+        json={
+            "date": "2026-03-20",
+            "maker": "Scott",
+            "grinder_id": grinder_id,
+            "grind_setting": "8+5 1/2",
+        },
     )
     assert resp.status_code == 422
 
@@ -263,7 +311,12 @@ def test_unknown_grinder_accepts_any_grind_setting(client: FlaskClient) -> None:
     grinder_id = resp.get_json()["id"]
     shot_resp = client.post(
         "/api/shots",
-        json={"date": "2026-03-20", "maker": "Scott", "grinder_id": grinder_id, "grind_setting": "anything goes"},
+        json={
+            "date": "2026-03-20",
+            "maker": "Scott",
+            "grinder_id": grinder_id,
+            "grind_setting": "anything goes",
+        },
     )
     assert shot_resp.status_code == 201
 
@@ -285,7 +338,9 @@ def test_update_shot_grind_setting_validated(client: FlaskClient) -> None:
     assert resp.status_code == 422
 
 
-def test_update_shot_unchanged_grind_setting_not_revalidated(client: FlaskClient) -> None:
+def test_update_shot_unchanged_grind_setting_not_revalidated(
+    client: FlaskClient,
+) -> None:
     """PUT /api/shots/<id> does not re-validate grind_setting when it hasn't changed.
 
     Ensures historical shots with non-conforming formats can still be edited.
@@ -301,7 +356,9 @@ def test_update_shot_unchanged_grind_setting_not_revalidated(client: FlaskClient
     assert r.status_code == 200
     # Shot now has Mazzer + grind_setting="19" (non-conforming). Editing another field
     # while echoing back the same grind_setting must succeed, not 422.
-    resp = client.put(f"/api/shots/{shot['id']}", json={"notes": "dial in", "grind_setting": "19"})
+    resp = client.put(
+        f"/api/shots/{shot['id']}", json={"notes": "dial in", "grind_setting": "19"}
+    )
     assert resp.status_code == 200
     assert resp.get_json()["notes"] == "dial in"
 

@@ -19,10 +19,10 @@ class GrindModelPoint(BaseModel):
     shot_id: int
     date: str
     age_days: int
-    temp_offset: float       # grinder_temp_before - 65
-    grind: float             # actual parsed grind setting (numeric)
-    grind_str: str           # human-readable (e.g. "8+5")
-    grind_predicted: float   # model prediction
+    temp_offset: float  # grinder_temp_before - 65
+    grind: float  # actual parsed grind setting (numeric)
+    grind_str: str  # human-readable (e.g. "8+5")
+    grind_predicted: float  # model prediction
     grind_predicted_str: str
 
 

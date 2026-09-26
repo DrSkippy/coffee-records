@@ -5,6 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from flask import Blueprint, jsonify
+from flask.typing import ResponseReturnValue
 from sqlalchemy import text
 
 from coffee_records.database import get_session
@@ -26,7 +27,7 @@ def _read_version() -> str:
 
 
 @health_bp.get("/health")
-def health() -> object:
+def health() -> ResponseReturnValue:
     """Return service health status.
 
     Returns:
@@ -43,7 +44,7 @@ def health() -> object:
 
 
 @health_bp.get("/api/version")
-def api_version() -> object:
+def api_version() -> ResponseReturnValue:
     """Return the API version.
 
     Returns:

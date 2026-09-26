@@ -12,6 +12,7 @@ Usage:
 import argparse
 import sys
 from datetime import date
+from typing import TypedDict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -20,15 +21,26 @@ from coffee_records.config import load_config
 from coffee_records.database import get_session, init_db
 from coffee_records.models.coffee import Coffee
 from coffee_records.models.shot import Shot
+from sqlalchemy.orm import Session
+
+
+class DuplicateSpec(TypedDict):
+    """Identifies one duplicate coffee cluster."""
+
+    description: str
+    roast_date: date
+    name_hint: str
+    roaster_hint: str
+
 
 # Each entry identifies a duplicate cluster by roast_date + case-insensitive
 # substrings on name and roaster.  The script queries at runtime so no IDs are
 # hardcoded — it will still work correctly if earlier coffees are renumbered.
-DUPLICATE_SPECS = [
+DUPLICATE_SPECS: list[DuplicateSpec] = [
     {
         "description": "Ollancay/Ollancey — Prodigal, roast_date 2026-01-26",
         "roast_date": date(2026, 1, 26),
-        "name_hint": "ollanc",    # matches both "Ollancay" and "Ollancey"
+        "name_hint": "ollanc",  # matches both "Ollancay" and "Ollancey"
         "roaster_hint": "prodigal",
     },
     {
@@ -47,7 +59,7 @@ DUPLICATE_SPECS = [
 
 
 def find_duplicate_pair(
-    session,
+    session: Session,
     roast_date: date,
     name_hint: str,
     roaster_hint: str,
@@ -74,13 +86,19 @@ def find_duplicate_pair(
         .all()
     )
     if len(rows) == 0:
-        print(f"  NOT FOUND: no coffees match roast_date={roast_date} name~={name_hint!r} roaster~={roaster_hint!r}")
+        print(
+            f"  NOT FOUND: no coffees match roast_date={roast_date} name~={name_hint!r} roaster~={roaster_hint!r}"
+        )
         return None
     if len(rows) == 1:
-        print(f"  ALREADY CLEAN: only one match — id={rows[0].id} '{rows[0].roaster}' / '{rows[0].name}'")
+        print(
+            f"  ALREADY CLEAN: only one match — id={rows[0].id} '{rows[0].roaster}' / '{rows[0].name}'"
+        )
         return None
     if len(rows) > 2:
-        print(f"  WARNING: {len(rows)} rows matched (expected 2) — skipping, manual review needed:")
+        print(
+            f"  WARNING: {len(rows)} rows matched (expected 2) — skipping, manual review needed:"
+        )
         for r in rows:
             print(f"    id={r.id}  '{r.roaster}' / '{r.name}'")
         return None
@@ -111,7 +129,9 @@ def main() -> None:
     session = get_session()
 
     if dry_run:
-        print("=== DRY RUN — no changes will be written. Pass --apply to execute. ===\n")
+        print(
+            "=== DRY RUN — no changes will be written. Pass --apply to execute. ===\n"
+        )
     else:
         print("=== APPLY MODE — changes will be committed. ===\n")
 
@@ -130,15 +150,17 @@ def main() -> None:
 
             keeper, duplicate = pair
             print(f"  KEEPER:    id={keeper.id}  '{keeper.roaster}' / '{keeper.name}'")
-            print(f"  DUPLICATE: id={duplicate.id}  '{duplicate.roaster}' / '{duplicate.name}'")
+            print(
+                f"  DUPLICATE: id={duplicate.id}  '{duplicate.roaster}' / '{duplicate.name}'"
+            )
 
             shot_count = (
-                session.query(Shot)
-                .filter(Shot.coffee_id == duplicate.id)
-                .count()
+                session.query(Shot).filter(Shot.coffee_id == duplicate.id).count()
             )
             print(f"  Shots referencing duplicate: {shot_count}")
-            print(f"  Will: UPDATE shots SET coffee_id={keeper.id} WHERE coffee_id={duplicate.id}")
+            print(
+                f"  Will: UPDATE shots SET coffee_id={keeper.id} WHERE coffee_id={duplicate.id}"
+            )
             print(f"  Will: DELETE coffees WHERE id={duplicate.id}")
 
             if not dry_run:

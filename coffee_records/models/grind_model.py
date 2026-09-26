@@ -18,9 +18,7 @@ class GrindModelTraining(Base):
     __tablename__ = "grind_model_trainings"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    grinder_id: Mapped[int] = mapped_column(
-        ForeignKey("grinders.id"), nullable=False
-    )
+    grinder_id: Mapped[int] = mapped_column(ForeignKey("grinders.id"), nullable=False)
     trained_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
@@ -61,9 +59,7 @@ class GrindModelCoffeeIntercept(Base):
     training_id: Mapped[int] = mapped_column(
         ForeignKey("grind_model_trainings.id"), nullable=False
     )
-    coffee_id: Mapped[int] = mapped_column(
-        ForeignKey("coffees.id"), nullable=False
-    )
+    coffee_id: Mapped[int] = mapped_column(ForeignKey("coffees.id"), nullable=False)
     intercept: Mapped[float] = mapped_column(Float, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

@@ -7,21 +7,26 @@ def _create_grinder(client: FlaskClient, **kwargs: object) -> dict:  # type: ign
     data = {"make": "Baratza", "model": "Vario", "type": "flat", **kwargs}
     resp = client.post("/api/grinders", json=data)
     assert resp.status_code == 201
-    return resp.get_json()  # type: ignore[return-value]
+    return resp.get_json()  # type: ignore[no-any-return]
 
 
 def _create_device(client: FlaskClient, **kwargs: object) -> dict:  # type: ignore[type-arg]
-    data = {"make": "Breville", "model": "Barista Express", "type": "espresso", **kwargs}
+    data = {
+        "make": "Breville",
+        "model": "Barista Express",
+        "type": "espresso",
+        **kwargs,
+    }
     resp = client.post("/api/brewing-devices", json=data)
     assert resp.status_code == 201
-    return resp.get_json()  # type: ignore[return-value]
+    return resp.get_json()  # type: ignore[no-any-return]
 
 
 def _create_scale(client: FlaskClient, **kwargs: object) -> dict:  # type: ignore[type-arg]
     data = {"make": "Acaia", "model": "Pearl", **kwargs}
     resp = client.post("/api/scales", json=data)
     assert resp.status_code == 201
-    return resp.get_json()  # type: ignore[return-value]
+    return resp.get_json()  # type: ignore[no-any-return]
 
 
 # ── Grinders ──────────────────────────────────────────────────────────────────

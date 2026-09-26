@@ -3,6 +3,7 @@
 from datetime import date
 
 from flask import Blueprint, jsonify, request
+from flask.typing import ResponseReturnValue
 
 from coffee_records.database import get_session
 from coffee_records.services.reports import (
@@ -48,7 +49,7 @@ def _parse_filters() -> tuple[int | None, int | None, int | None]:
 
 
 @reports_bp.get("/dose-yield")
-def report_dose_yield() -> object:
+def report_dose_yield() -> ResponseReturnValue:
     """Dose vs yield ratio over time.
 
     Returns:
@@ -65,7 +66,7 @@ def report_dose_yield() -> object:
 
 
 @reports_bp.get("/shots-per-day")
-def report_shots_per_day() -> object:
+def report_shots_per_day() -> ResponseReturnValue:
     """Shot count grouped by date.
 
     Returns:
@@ -75,14 +76,12 @@ def report_shots_per_day() -> object:
     coffee_id, grinder_id, device_id = _parse_filters()
     with get_session() as session:
         return jsonify(
-            shots_per_day(
-                session, date_from, date_to, coffee_id, grinder_id, device_id
-            )
+            shots_per_day(session, date_from, date_to, coffee_id, grinder_id, device_id)
         )
 
 
 @reports_bp.get("/extraction-trends")
-def report_extraction_trends() -> object:
+def report_extraction_trends() -> ResponseReturnValue:
     """Extraction time over time.
 
     Returns:
@@ -99,7 +98,7 @@ def report_extraction_trends() -> object:
 
 
 @reports_bp.get("/shots-per-grinder")
-def report_shots_per_grinder() -> object:
+def report_shots_per_grinder() -> ResponseReturnValue:
     """Shot count grouped by grinder.
 
     Returns:
@@ -109,11 +108,13 @@ def report_shots_per_grinder() -> object:
     coffee_id = int(c) if (c := request.args.get("coffee_id")) else None
     device_id = int(d) if (d := request.args.get("device_id")) else None
     with get_session() as session:
-        return jsonify(shots_per_grinder(session, date_from, date_to, coffee_id, device_id))
+        return jsonify(
+            shots_per_grinder(session, date_from, date_to, coffee_id, device_id)
+        )
 
 
 @reports_bp.get("/grind-regression")
-def report_grind_regression() -> object:
+def report_grind_regression() -> ResponseReturnValue:
     """Bivariate linear regression of grind setting vs days-since-roast and grinder temp.
 
     Returns:
@@ -143,7 +144,7 @@ def report_grind_regression() -> object:
 
 
 @reports_bp.get("/target-shot-time")
-def report_target_shot_time() -> object:
+def report_target_shot_time() -> ResponseReturnValue:
     """Weighted moving average target shot time for a coffee/grinder/device combo.
 
     Query params:
@@ -179,7 +180,7 @@ def report_target_shot_time() -> object:
 
 
 @reports_bp.post("/grind-model/train")
-def report_grind_model_train() -> object:
+def report_grind_model_train() -> ResponseReturnValue:
     """Fit (or re-fit) the multivariate grind model for a grinder.
 
     Warm-starts from the most recent existing training for this grinder.
@@ -208,12 +209,15 @@ def report_grind_model_train() -> object:
             if msg == "grinder_not_found":
                 return jsonify({"error": "grinder not found"}), 404
             if msg == "insufficient_data":
-                return jsonify({"error": "fewer than 3 usable shots after filtering"}), 422
+                return (
+                    jsonify({"error": "fewer than 3 usable shots after filtering"}),
+                    422,
+                )
             raise
 
 
 @reports_bp.get("/grind-model/params")
-def report_grind_model_params() -> object:
+def report_grind_model_params() -> ResponseReturnValue:
     """Retrieve grind model parameters for a grinder.
 
     Returns the most recent training by default. Use training_id or as_of
@@ -242,6 +246,7 @@ def report_grind_model_params() -> object:
     if ao := request.args.get("as_of"):
         try:
             from datetime import date as _date
+
             as_of = _date.fromisoformat(ao)
         except ValueError:
             return jsonify({"error": "as_of must be an ISO date (YYYY-MM-DD)"}), 400
@@ -255,12 +260,15 @@ def report_grind_model_params() -> object:
             if msg == "grinder_not_found":
                 return jsonify({"error": "grinder not found"}), 404
             if msg == "no_training":
-                return jsonify({"error": "no trained model found for this grinder"}), 404
+                return (
+                    jsonify({"error": "no trained model found for this grinder"}),
+                    404,
+                )
             raise
 
 
 @reports_bp.get("/by-coffee/<int:coffee_id>")
-def report_by_coffee(coffee_id: int) -> object:
+def report_by_coffee(coffee_id: int) -> ResponseReturnValue:
     """All stats scoped to one coffee bag.
 
     Args:

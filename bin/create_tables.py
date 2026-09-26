@@ -45,7 +45,9 @@ def main() -> None:
     """Create all tables and seed initial data."""
     config = load_config()
     db_url = config.database.get_url()
-    print(f"Connecting to: {config.database.host}:{config.database.port}/{config.database.name}")
+    print(
+        f"Connecting to: {config.database.host}:{config.database.port}/{config.database.name}"
+    )
     init_db(db_url, pool_size=1)
     engine = get_engine()
     Base.metadata.create_all(engine)
