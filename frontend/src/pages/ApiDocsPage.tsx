@@ -206,6 +206,12 @@ const sections: Section[] = [
       },
       {
         method: "POST",
+        path: "/api/shots/import-csv",
+        description: "Parse a Brewmeo shot CSV (multipart/form-data, field: file) into New Shot form values, a proposed new coffee, notes, and Beanconqueror-style telemetry JSON. Writes nothing to the database.",
+        curl: `curl -X POST ${BASE}/api/shots/import-csv \\\n  -F "file=@My shot #19.csv"`,
+      },
+      {
+        method: "POST",
         path: "/api/shots/:id/telemetry",
         description: "Upload a Beanconqueror flow-profile JSON (multipart/form-data, field: file). Replaces existing telemetry.",
         curl: `curl -X POST ${BASE}/api/shots/42/telemetry \\\n  -F "file=@flowprofile.json"`,

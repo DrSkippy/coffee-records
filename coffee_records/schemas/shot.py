@@ -3,10 +3,12 @@
 from datetime import date as Date
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel
 
 from coffee_records.models.shot import DrinkType
+from coffee_records.schemas.coffee import CoffeeCreate
 
 
 class ShotCreate(BaseModel):
@@ -151,3 +153,35 @@ class ShotResponse(BaseModel):
             device_label=device_label,
             created_at=s.created_at,
         )
+
+
+class ShotCsvImportFields(BaseModel):
+    """Shot form values recovered from an imported CSV (unmatched fields are None)."""
+
+    date: Date | None = None
+    maker: str | None = None
+    coffee_id: int | None = None
+    dose_weight: float | None = None
+    pre_infusion_time: str | None = None
+    extraction_time: float | None = None
+    final_weight: float | None = None
+    grind_setting: str | None = None
+    grinder_id: int | None = None
+    device_id: int | None = None
+
+
+class ShotCsvImportResponse(BaseModel):
+    """Result of parsing a shot CSV: form prefill, notes, and converted telemetry.
+
+    ``new_coffee`` is set (and ``fields.coffee_id`` is None) when no existing
+    coffee matches on name, roaster and roast date; the client creates it on
+    save.
+    """
+
+    source: str
+    fields: ShotCsvImportFields
+    new_coffee: CoffeeCreate | None = None
+    notes: str
+    telemetry: dict[str, Any] | None = None
+    telemetry_filename: str | None = None
+    warnings: list[str]

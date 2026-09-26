@@ -83,6 +83,29 @@ export interface Shot {
   created_at: string;
 }
 
+export type NewCoffee = Omit<Coffee, "id" | "image_filename" | "created_at">;
+
+export interface ShotCsvImport {
+  source: string;
+  fields: {
+    date: string | null;
+    maker: string | null;
+    coffee_id: number | null;
+    dose_weight: number | null;
+    pre_infusion_time: string | null;
+    extraction_time: number | null;
+    final_weight: number | null;
+    grind_setting: string | null;
+    grinder_id: number | null;
+    device_id: number | null;
+  };
+  new_coffee: NewCoffee | null;
+  notes: string;
+  telemetry: Record<string, unknown> | null;
+  telemetry_filename: string | null;
+  warnings: string[];
+}
+
 export interface DoseYieldPoint {
   date: string;
   shot_id: number;

@@ -1,0 +1,133 @@
+information_type,elapsed,pressure,current_total_shot_weight,flow_in,flow_out,water_temperature_boiler,water_temperature_in,water_temperature_basket,metatype,metadata,comment
+meta,,,,,,,,,Name,My shot #19,text
+meta,,,,,,,,,Weight,40.30534195933456,grounds weight in g
+meta,,,,,,,,,Dose,0.0,grounds weight in g
+meta,,,,,,,,,Date,2026-09-26T06:29:10.628,ISO8601 formatted date
+meta,,,,,,,,,Operator,,text
+meta,,,,,,,,,Boiler Temperature,,celsius
+meta,,,,,,,,,Boiler Pressure,,text
+meta,,,,,,,,,Brewing Temperature,,celsius
+meta,,,,,,,,,Preinfusion Time,,sec
+meta,,,,,,,,,Grinder Setting,0.8,text
+meta,,,,,,,,,Aroma / Fragnance,,text
+meta,,,,,,,,,Tamper Model,,text
+meta,,,,,,,,,Tds,,number
+meta,,,,,,,,,Body,,number in range 1 .. 10
+meta,,,,,,,,,Bitterness,,number in range 1 .. 10
+meta,,,,,,,,,Rating,,number in range 1 .. 10
+meta,,,,,,,,,Fragrance,,number in range 1 .. 10
+meta,,,,,,,,,Aroma,,number in range 1 .. 10
+meta,,,,,,,,,Flavor,,number in range 1 .. 10
+meta,,,,,,,,,After Taste,,number in range 1 .. 10
+meta,,,,,,,,,Acidity,,number in range 1 .. 10
+meta,,,,,,,,,Sweetness,,number in range 1 .. 10
+meta,,,,,,,,,Mouthfeel,,number in range 1 .. 10
+meta,,,,,,,,,Assessment Overall,,number in range 1 .. 10
+meta,,,,,,,,,Beans Id,0613efe4-3c9c-403e-b629-3539deb500e5,text
+meta,,,,,,,,,Beans,Sweet Sidama,text
+meta,,,,,,,,,Variety,Heirloom,text
+meta,,,,,,,,,Roastery,Flatlands Coffee,text
+meta,,,,,,,,,Roasting Date,2026-08-24T00:00:00.000,ISO8601 formatted date
+meta,,,,,,,,,Roast Color,Light,text
+meta,,,,,,,,,Description,,text
+meta,,,,,,,,,Espresso Machine Id,3d5dafc0-1230-4c63-831f-52001e3c7d43,text
+meta,,,,,,,,,Espresso Machine Name,ECM Synchronika II,text
+meta,,,,,,,,,Espresso Machine Brand,ECM,text
+meta,,,,,,,,,Espresso Machine Model,Synchronika II,text
+meta,,,,,,,,,Basket Id,2523f668-6d59-46a9-a285-81f147dabf43,text
+meta,,,,,,,,,Basket Name,VST 18 g,text
+meta,,,,,,,,,Basket Diameter,58.0,number
+meta,,,,,,,,,Basket Capacity,18.0,number
+meta,,,,,,,,,Grinder Id,b91497de-49e6-41c3-82d3-f02baea761b6,text
+meta,,,,,,,,,Grinder Name,Lagom Option O p80,text
+meta,,,,,,,,,Grinder Brand,Lagom,text
+meta,,,,,,,,,Grinder Model,p80,text
+meta,,,,,,,,,Tamper Id,dd0cc88b-b2b5-4f9e-b63c-2fb8d8184076,text
+meta,,,,,,,,,Tamper Name,Normcore,text
+meta,,,,,,,,,Tamper Brand,Normcore,text
+meta,,,,,,,,,Tamper Force,30.0,weight in kg
+meta,,,,,,,,,Tamper Diameter,58.0,number
+meta,,,,,,,,,Brew ratio,1.0,espresso weight / grounds weight in %
+meta,,,,,,,,,Extraction time,37.908,sec
+meta,,,,,,,,,Avarage flow rate,1.0632410562238725,g/sec
+meta,,,,,,,,,Unit system,metric,metric or imperial,
+meta,,,,,,,,,Attribution,Brewmeo,
+meta,,,,,,,,,Software,Brewmeo,
+meta,,,,,,,,,Url,https://play.google.com/store/apps/details?id=com.pressensor.coffeeflow,
+meta,,,,,,,,,Export version,1.1.0,
+moment,0.005,,0.0,,,,,,,,sample: weight
+moment,0.48,1.0654,,,,,,,,,sample: pressure
+moment,0.968,1.4796,,,,,,,,,sample: pressure
+moment,1.466,,0.0,,,,,,,,sample: weight
+moment,1.973,,0.0,,,,,,,,sample: weight
+moment,2.452,1.511,,,,,,,,,sample: pressure
+moment,3.015,,,,,,26.9,,,,sample: temperature
+moment,3.516,1.4067999999999998,,,,,,,,,sample: pressure
+moment,4.015,1.385464609375,,,,,,,,,sample: pressure
+moment,4.488,1.9920000000000002,,,,,,,,,sample: pressure
+moment,4.979,,0.0,,,,,,,,sample: weight
+moment,5.502,4.0952,,,,,,,,,sample: pressure
+moment,6.045,6.957800000000001,,,,,,,,,sample: pressure
+moment,6.477,,0.4,,,,,,,,sample: weight
+moment,7.03,,0.7302788461538461,,,,,,,,sample: weight
+moment,7.469,,1.0,,,,,,,,sample: weight
+moment,7.982,,1.29,,,,,,,,sample: weight
+moment,8.538,,1.7527520092363724,,,,,,,,sample: weight
+moment,8.967,8.764042623481604,,,,,,,,,sample: pressure
+moment,9.438,,2.3415061499382843,,,,,,,,sample: weight
+moment,9.932,,2.76200575815739,,,,,,,,sample: weight
+moment,10.349,,3.09,,,,,,,,sample: weight
+moment,10.885,8.720659375591294,,,,,,,,,sample: pressure
+moment,11.376,8.694408218111004,,,,,,,,,sample: pressure
+moment,11.901,,4.301193210591039,,,,,,,,sample: weight
+moment,12.379,8.657,,,,,,,,,sample: pressure
+moment,12.939,,5.067407114418346,,,,,,,,sample: weight
+moment,13.399,8.6132,,,,,,,,,sample: pressure
+moment,13.957,8.5852,,,,,,,,,sample: pressure
+moment,14.429,,6.59,,,,,,,,sample: weight
+moment,14.937,,7.09,,,,,,,,sample: weight
+moment,15.422,,7.5710360902069205,,,,,,,,sample: weight
+moment,16.017,,8.267403369672943,,,,,,,,sample: weight
+moment,16.439,,8.8,,,,,,,,sample: weight
+moment,16.919,,9.19,,,,,,,,sample: weight
+moment,17.454,8.389,,,,,,,,,sample: pressure
+moment,18.005,8.365169931573803,,,,,,,,,sample: pressure
+moment,18.526,,11.3,,,,,,,,sample: weight
+moment,19.029,8.2964,,,,,,,,,sample: pressure
+moment,19.506,,12.621468926553673,,,,,,,,sample: weight
+moment,19.943,8.239799999999999,,,,,,,,,sample: pressure
+moment,20.513,,14.118460019743337,,,,,,,,sample: weight
+moment,21.026,,14.69,,,,,,,,sample: weight
+moment,21.492,8.124400000000001,,,,,,,,,sample: pressure
+moment,22.013,8.090999608610566,,,,,,,,,sample: pressure
+moment,22.471,8.051465097067823,,,,,,,,,sample: pressure
+moment,22.984,8.01457432485323,,,,,,,,,sample: pressure
+moment,23.478,,19.028291479358714,,,,,,,,sample: weight
+moment,23.981,7.9201642156303524,,,,,,,,,sample: pressure
+moment,24.497,,20.89,,,,,,,,sample: weight
+moment,25.004,,21.622717200765788,,,,,,,,sample: weight
+moment,25.498,7.816599999999999,,,,,,,,,sample: pressure
+moment,26.04,,23.6,,,,,,,,sample: weight
+moment,26.565,,24.744750922509226,,,,,,,,sample: weight
+moment,27.089,,25.79,,,,,,,,sample: weight
+moment,27.606,7.691056292594671,,,,,,,,,sample: pressure
+moment,28.12,7.658800000000001,,,,,,,,,sample: pressure
+moment,28.618,,28.79,,,,,,,,sample: weight
+moment,29.129,7.592758489065607,,,,,,,,,sample: pressure
+moment,29.579,,31.0,,,,,,,,sample: weight
+moment,30.099,7.537959882926829,,,,,,,,,sample: pressure
+moment,30.582,7.51169000944287,,,,,,,,,sample: pressure
+moment,31.16,7.494,,,,,,,,,sample: pressure
+moment,31.645,7.477038163723144,,,,,,,,,sample: pressure
+moment,32.093,7.45254023668639,,,,,,,,,sample: pressure
+moment,32.564,7.448359032395733,,,,,,,,,sample: pressure
+moment,33.079,7.436048140900195,,,,,,,,,sample: pressure
+moment,33.587,0.6958,,,,,,,,,sample: pressure
+moment,34.139,,40.0,,,,,,,,sample: weight
+moment,34.743,,40.0,,,,,,,,sample: weight
+moment,35.294,0.0,,,,,,,,,sample: pressure
+moment,35.934,,40.096571857359876,,,,,,,,sample: weight
+moment,36.558,,40.09,,,,,,,,sample: weight
+moment,37.124,,40.29636103151862,,,,,,,,sample: weight
+moment,37.564,0.02335349753694581,,,,,,,,,sample: pressure
+moment,37.908,,40.29,,,,,,,,sample: weight

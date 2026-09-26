@@ -15,6 +15,11 @@ from coffee_records.database import get_session
 from coffee_records.models.equipment import Grinder
 from coffee_records.models.shot import Shot
 from coffee_records.schemas.shot import ShotCreate, ShotResponse, ShotUpdate
+from coffee_records.services.brewmeo_import import (
+    BrewmeoImportError,
+    build_import,
+    parse_brewmeo_csv,
+)
 from coffee_records.services.grind_validation import validate_grind_setting
 from coffee_records.services.telemetry import (
     TelemetryValidationError,
@@ -190,6 +195,34 @@ def create_shot() -> ResponseReturnValue:
         loaded = _load_shot(session, shot.id)
         assert loaded is not None
         return jsonify(ShotResponse.from_orm_shot(loaded).model_dump(mode="json")), 201
+
+
+@shots_bp.post("/import-csv")
+def import_shot_csv() -> ResponseReturnValue:
+    """Parse a Brewmeo shot CSV into New Shot form values and telemetry.
+
+    The CSV is read in memory and discarded; nothing is written to the
+    database or disk. The client creates the shot (and any proposed new
+    coffee) and uploads the returned telemetry on save.
+
+    Returns:
+        JSON ShotCsvImportResponse, or 400/422 on a missing or invalid file.
+    """
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"error": "Empty filename"}), 400
+    try:
+        text = file.read().decode("utf-8-sig")
+        shot = parse_brewmeo_csv(text)
+    except UnicodeDecodeError:
+        return jsonify({"error": "CSV must be UTF-8 text"}), 422
+    except BrewmeoImportError as exc:
+        return jsonify({"error": str(exc)}), 422
+    with get_session() as session:
+        result = build_import(session, shot, file.filename)
+    return jsonify(result.model_dump(mode="json"))
 
 
 @shots_bp.get("/<int:shot_id>")

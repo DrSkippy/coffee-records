@@ -188,7 +188,7 @@ The default view. Lists the most recent 50 shots, newest first. Each card shows:
 - A compact telemetry chart thumbnail when telemetry is attached; click it to open the interactive chart modal
 - A telemetry icon fallback when a legacy or missing thumbnail cannot be loaded
 
-Filter the list by maker using the dropdown at the top.
+Filter the list by maker using the dropdown at the top. **Import CSV** starts a new shot from a Brewmeo export (see [Importing a Brewmeo CSV](#importing-a-brewmeo-csv)).
 
 ### New Shot
 
@@ -217,6 +217,32 @@ Form to log a shot. All fields except date and maker are optional. The form open
 | Telemetry | — | Optional Beanconqueror JSON — validated and uploaded with a generated PNG preview after the shot is saved |
 
 Equipment defaults (grinder, machine, scale) are resolved by substring match on `make + model` after the equipment list loads, so they adapt automatically if equipment records are renamed.
+
+#### Importing a Brewmeo CSV
+
+**Import CSV** on the Shots page parses a Brewmeo shot export on the server and opens this form prefilled. Nothing is saved until **Save Shot**, and the CSV itself is never stored. Only non-empty, non-zero values replace the defaults:
+
+| CSV `metatype` | Form field |
+|---|---|
+| Weight | Final weight |
+| Dose | Dose |
+| Date | Date |
+| Extraction time | Extraction time (rounded to 0.1 s) |
+| Grinder Setting | Grind setting |
+| Preinfusion Time | Pre-infusion time |
+| Operator | Maker |
+| Beans + Roastery + Roasting Date | Coffee: an existing coffee must fuzzy-match name and roaster **and** have the same roast date. Otherwise a new coffee (with Roast Color → roast level, Variety, and origin/process copied from an earlier bag of the same beans) is offered as "New: …" and created on save. |
+| Grinder / Espresso Machine name, brand, model | Grinder / Machine, matched by shared words in `make + model`. Equipment is never created; unmatched equipment is reported and kept in the notes. |
+
+Remaining metadata (basket, tamper, ratings, temperatures, average flow…) is written to **Notes**. Record IDs and export boilerplate are left out of the notes.
+
+The `moment` rows are converted to Beanconqueror-style telemetry JSON and attached as the Telemetry file:
+- Weight goes to `weight`, pressure to `pressureFlow`, temperature to `temperatureFlow`.
+- A flow series (`realtimeFlow`) is derived from the smoothed weight curve.
+- Brew times are written in Beanconqueror's `S.T` tenths format.
+- An extra `metadata` object records the source file and every CSV metadata value. The chart readers ignore it.
+
+A sudden jump of more than 5 g within 0.25 s in the last 20% of the shot is treated as the cup being bumped or lifted, and is trimmed from the weight trace. The form then warns if the CSV's final weight disagrees with the scale trace.
 
 ### Coffees
 
@@ -347,6 +373,7 @@ Requests without a valid key return `401 Unauthorized`. Authentication is disabl
 |---|---|---|
 | `GET` | `/api/shots` | List shots (newest first, max 50 by default) |
 | `POST` | `/api/shots` | Create a shot |
+| `POST` | `/api/shots/import-csv` | Parse a Brewmeo shot CSV into New Shot form values, a proposed coffee, notes, and telemetry JSON (`multipart/form-data`, field `file`). Writes nothing. |
 | `GET` | `/api/shots/<id>` | Get one shot |
 | `PUT` | `/api/shots/<id>` | Update a shot |
 | `DELETE` | `/api/shots/<id>` | Delete a shot and its video, telemetry JSON, and telemetry thumbnail |
@@ -354,6 +381,8 @@ Requests without a valid key return `401 Unauthorized`. Authentication is disabl
 | `DELETE` | `/api/shots/<id>/video` | Remove the video |
 | `POST` | `/api/shots/<id>/telemetry` | Validate telemetry JSON and upload it with a generated PNG thumbnail (`multipart/form-data`, field `file`) |
 | `DELETE` | `/api/shots/<id>/telemetry` | Remove the telemetry JSON and generated thumbnail |
+
+CSV import returns `422` for files that aren't UTF-8 or lack the Brewmeo columns (`information_type`, `elapsed`, `pressure`, `current_total_shot_weight`, `metatype`, `metadata`, `comment`) or metadata rows.
 
 Telemetry upload returns `422` when the JSON is malformed or contains no usable weight, flow, or pressure data. A failed replacement leaves the previous JSON and thumbnail intact.
 

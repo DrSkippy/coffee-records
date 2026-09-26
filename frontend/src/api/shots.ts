@@ -1,4 +1,4 @@
-import type { Shot } from "../types";
+import type { Shot, ShotCsvImport } from "../types";
 import api from "./client";
 
 interface ShotFilters {
@@ -51,3 +51,9 @@ export const uploadShotTelemetry = (id: number, file: File) => {
 
 export const deleteShotTelemetry = (id: number) =>
   api.delete<Shot>(`/shots/${id}/telemetry`).then((r) => r.data);
+
+export const importShotCsv = (file: File) => {
+  const form = new FormData();
+  form.append("file", file);
+  return api.post<ShotCsvImport>("/shots/import-csv", form).then((r) => r.data);
+};

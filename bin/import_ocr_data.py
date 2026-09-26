@@ -31,6 +31,7 @@ from coffee_records.database import get_session, init_db
 from coffee_records.models.coffee import Coffee, RoastLevel
 from coffee_records.models.equipment import BrewingDevice, Grinder
 from coffee_records.models.shot import DrinkType, Shot
+from coffee_records.services.matching import fuzzy_match, token_overlap
 
 logger = logging.getLogger(__name__)
 
@@ -633,37 +634,6 @@ def resolve_equipment(session: Any) -> dict[str, int | None]:
 # ---------------------------------------------------------------------------
 
 
-def _token_overlap(a: str, b: str) -> float:
-    """Fraction of tokens in 'a' that appear in 'b' (case-insensitive)."""
-    tokens_a = set(a.lower().split())
-    tokens_b = set(b.lower().split())
-    if not tokens_a:
-        return 0.0
-    return len(tokens_a & tokens_b) / len(tokens_a)
-
-
-def _fuzzy_match(a: str, b: str, threshold: float = 0.8) -> bool:
-    """Return True if 'a' and 'b' are similar enough by token overlap or edit distance.
-
-    Tries token overlap first (> 0.5 is an immediate match). Falls back to
-    SequenceMatcher ratio for single-word names or abbreviations (e.g.
-    "Ollancay" vs "Ollancey", "Col." vs "Collective").
-
-    Args:
-        a:         Incoming string (from CSV)
-        b:         Existing DB string
-        threshold: SequenceMatcher ratio floor for the fallback path
-
-    Returns:
-        True if the strings are considered equivalent
-    """
-    if not a or not b:
-        return False
-    if _token_overlap(a, b) > 0.5:
-        return True
-    return SequenceMatcher(None, a.lower(), b.lower()).ratio() >= threshold
-
-
 def find_existing_coffee(session: Any, coffee: dict[str, Any]) -> int | None:
     """Check whether a coffee already exists in the database.
 
@@ -687,8 +657,8 @@ def find_existing_coffee(session: Any, coffee: dict[str, Any]) -> int | None:
     )
 
     for c in candidates:
-        name_score = _token_overlap(coffee.get("name", ""), c.name or "")
-        roaster_score = _token_overlap(coffee.get("roaster", ""), c.roaster or "")
+        name_score = token_overlap(coffee.get("name", ""), c.name or "")
+        roaster_score = token_overlap(coffee.get("roaster", ""), c.roaster or "")
         name_ratio = SequenceMatcher(
             None, (coffee.get("name") or "").lower(), (c.name or "").lower()
         ).ratio()
@@ -696,8 +666,8 @@ def find_existing_coffee(session: Any, coffee: dict[str, Any]) -> int | None:
             None, (coffee.get("roaster") or "").lower(), (c.roaster or "").lower()
         ).ratio()
 
-        name_match = _fuzzy_match(coffee.get("name", ""), c.name or "", threshold=0.8)
-        roaster_match = _fuzzy_match(
+        name_match = fuzzy_match(coffee.get("name", ""), c.name or "", threshold=0.8)
+        roaster_match = fuzzy_match(
             coffee.get("roaster", ""), c.roaster or "", threshold=0.5
         )
 

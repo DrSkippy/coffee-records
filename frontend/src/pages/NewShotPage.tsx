@@ -1,4 +1,5 @@
 import {
+  Alert,
   Autocomplete,
   Button,
   Checkbox,
@@ -15,18 +16,18 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
-import { IconChartLine, IconVideo } from "@tabler/icons-react";
+import { IconChartLine, IconFileImport, IconVideo } from "@tabler/icons-react";
 import { DateInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getCoffees } from "../api/coffees";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { createCoffee, getCoffees } from "../api/coffees";
 import { getDefaults } from "../api/defaults";
 import { getBrewingDevices, getGrinders, getScales } from "../api/equipment";
 import { createShot, uploadShotTelemetry, uploadShotVideo } from "../api/shots";
-import type { BrewingDevice, Coffee, Grinder, Scale } from "../types";
+import type { BrewingDevice, Coffee, Grinder, Scale, ShotCsvImport } from "../types";
 
 const posToValue = (pos: number): number => {
   if (pos === 0) return 0;
@@ -47,6 +48,11 @@ const DELTA_MARKS = [
   { value: valueToPos(5), label: "5" },
   { value: 15, label: "15" },
 ];
+
+// Coffee select value for a coffee proposed by a CSV import, created on save.
+const NEW_COFFEE = "__new__";
+
+const oneDecimal = (value: number): number => Math.round(value * 10) / 10;
 
 interface FormValues {
   date: Date;
@@ -73,6 +79,9 @@ interface FormValues {
 
 export default function NewShotPage() {
   const navigate = useNavigate();
+  const csvImport =
+    (useLocation().state as { csvImport?: ShotCsvImport } | null)?.csvImport ?? null;
+  const createdCoffeeId = useRef<number | null>(null);
   const [coffees, setCoffees] = useState<Coffee[]>([]);
   const [grinders, setGrinders] = useState<Grinder[]>([]);
   const [devices, setDevices] = useState<BrewingDevice[]>([]);
@@ -80,7 +89,13 @@ export default function NewShotPage() {
   const [submitting, setSubmitting] = useState(false);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoUploadProgress, setVideoUploadProgress] = useState<number | null>(null);
-  const [telemetryFile, setTelemetryFile] = useState<File | null>(null);
+  const [telemetryFile, setTelemetryFile] = useState<File | null>(() =>
+    csvImport?.telemetry && csvImport.telemetry_filename
+      ? new File([JSON.stringify(csvImport.telemetry)], csvImport.telemetry_filename, {
+          type: "application/json",
+        })
+      : null
+  );
   const [sliderPosition, setSliderPosition] = useState(0);
 
   useEffect(() => {
@@ -122,6 +137,8 @@ export default function NewShotPage() {
           `${x.make} ${x.model}`.toLowerCase().includes("bookoo")
         );
         if (scale) form.setFieldValue("scale_id", String(scale.id));
+
+        if (csvImport) applyCsvImport(csvImport);
       }
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- load once; Mantine's form object isn't referentially stable
@@ -175,6 +192,29 @@ export default function NewShotPage() {
     },
   });
 
+  const applyCsvImport = ({ fields, new_coffee, notes }: ShotCsvImport) => {
+    if (fields.date) form.setFieldValue("date", dayjs(fields.date).toDate());
+    if (fields.maker) form.setFieldValue("maker", fields.maker);
+    if (fields.dose_weight) form.setFieldValue("dose_weight", oneDecimal(fields.dose_weight));
+    if (fields.final_weight) form.setFieldValue("final_weight", oneDecimal(fields.final_weight));
+    if (fields.extraction_time) form.setFieldValue("extraction_time", fields.extraction_time);
+    if (fields.pre_infusion_time) form.setFieldValue("pre_infusion_time", fields.pre_infusion_time);
+    if (fields.grind_setting) form.setFieldValue("grind_setting", fields.grind_setting);
+    if (fields.grinder_id) form.setFieldValue("grinder_id", String(fields.grinder_id));
+    if (fields.device_id) form.setFieldValue("device_id", String(fields.device_id));
+    if (fields.coffee_id) form.setFieldValue("coffee_id", String(fields.coffee_id));
+    else if (new_coffee) form.setFieldValue("coffee_id", NEW_COFFEE);
+    form.setFieldValue("notes", notes);
+  };
+
+  const resolveCoffeeId = async (value: string): Promise<number | null> => {
+    if (value !== NEW_COFFEE) return value ? Number(value) : null;
+    if (createdCoffeeId.current === null && csvImport?.new_coffee) {
+      createdCoffeeId.current = (await createCoffee(csvImport.new_coffee)).id;
+    }
+    return createdCoffeeId.current;
+  };
+
   const handleDeltaSlider = (pos: number) => {
     setSliderPosition(pos);
     form.setFieldValue("extraction_delta", Math.round(posToValue(pos) * 10) / 10);
@@ -186,7 +226,7 @@ export default function NewShotPage() {
       const payload = {
         date: dayjs(values.date).format("YYYY-MM-DD"),
         maker: values.maker,
-        coffee_id: values.coffee_id ? Number(values.coffee_id) : null,
+        coffee_id: await resolveCoffeeId(values.coffee_id),
         dose_weight: values.dose_weight !== "" ? Number(values.dose_weight) : null,
         pre_infusion_time: values.pre_infusion_time || null,
         extraction_time: values.extraction_time !== "" ? Number(values.extraction_time) : null,
@@ -230,6 +270,13 @@ export default function NewShotPage() {
     value: String(c.id),
     label: `${c.name} — ${c.roaster}`,
   }));
+  if (csvImport?.new_coffee) {
+    const { name, roaster, roast_date } = csvImport.new_coffee;
+    coffeeData.unshift({
+      value: NEW_COFFEE,
+      label: `New: ${name} — ${roaster}${roast_date ? ` (roasted ${roast_date})` : ""}`,
+    });
+  }
   const grinderData = grinders.map((g) => ({
     value: String(g.id),
     label: `${g.make} ${g.model}`,
@@ -246,6 +293,23 @@ export default function NewShotPage() {
   return (
     <Stack>
       <Title order={2}>New Shot</Title>
+      {csvImport && (
+        <Alert
+          icon={<IconFileImport size={16} />}
+          color={csvImport.warnings.length ? "yellow" : "blue"}
+          title={`Imported from ${csvImport.source}`}
+        >
+          {csvImport.warnings.length === 0 ? (
+            <Text size="sm">Review the prefilled fields, then save.</Text>
+          ) : (
+            csvImport.warnings.map((w) => (
+              <Text key={w} size="sm">
+                {w}
+              </Text>
+            ))
+          )}
+        </Alert>
+      )}
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Grid gutter="sm">
           <Grid.Col span={{ base: 12, sm: 6 }}>
