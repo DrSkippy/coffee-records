@@ -11,8 +11,12 @@ export default function ShotsPage() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const handleMakerChange = (value: string | null) => {
     setLoading(true);
+    setMakerFilter(value);
+  };
+
+  useEffect(() => {
     getShots({ maker: makerFilter ?? undefined, limit: 50 })
       .then(setShots)
       .finally(() => setLoading(false));
@@ -29,7 +33,7 @@ export default function ShotsPage() {
           placeholder="All makers"
           data={["Scott", "Sara"]}
           value={makerFilter}
-          onChange={setMakerFilter}
+          onChange={handleMakerChange}
           clearable
           w={160}
         />

@@ -124,6 +124,7 @@ export default function NewShotPage() {
         if (scale) form.setFieldValue("scale_id", String(scale.id));
       }
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once; Mantine's form object isn't referentially stable
   }, []);
 
   const form = useForm<FormValues>({

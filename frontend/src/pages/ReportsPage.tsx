@@ -1,6 +1,6 @@
 import { BarChart, LineChart } from "@mantine/charts";
 import { Badge, Group, Paper, Select, SimpleGrid, Stack, Text, Title } from "@mantine/core";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   getDoseYield,
   getExtractionTrends,
@@ -214,17 +214,20 @@ export default function ReportsPage() {
     getBrewingDevices().then(setDevices);
   }, []);
 
-  const params: ReportParams = {
-    date_from: daysAgo(Number(days)),
-    date_to: new Date().toISOString().slice(0, 10),
-    ...(coffeeId ? { coffee_id: Number(coffeeId) } : {}),
-    ...(deviceId ? { device_id: Number(deviceId) } : {}),
-  };
+  const params: ReportParams = useMemo(
+    () => ({
+      date_from: daysAgo(Number(days)),
+      date_to: new Date().toISOString().slice(0, 10),
+      ...(coffeeId ? { coffee_id: Number(coffeeId) } : {}),
+      ...(deviceId ? { device_id: Number(deviceId) } : {}),
+    }),
+    [days, coffeeId, deviceId]
+  );
 
   // Reload grinder counts whenever filters change
   useEffect(() => {
     getShotsPerGrinder(params).then(setGrinderCounts);
-  }, [days, coffeeId, deviceId]);
+  }, [params]);
 
   const activeGrinders = grinderCounts.filter((g) => g.count > 3);
 

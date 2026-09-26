@@ -71,6 +71,7 @@ export default function DefaultsPage() {
         notifications.show({ message: "Failed to load defaults", color: "red" });
       })
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once; Mantine's form object isn't referentially stable
   }, []);
 
   const handleSubmit = async (values: FormValues) => {

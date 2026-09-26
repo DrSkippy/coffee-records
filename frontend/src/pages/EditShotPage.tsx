@@ -162,6 +162,7 @@ export default function EditShotPage() {
         navigate("/shots");
       })
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load once; Mantine's form object isn't referentially stable
   }, [id]);
 
   const handleDeltaSlider = (pos: number) => {

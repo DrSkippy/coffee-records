@@ -139,15 +139,15 @@ export default function ShotPlannerPage() {
     });
   }, []);
 
-  useEffect(() => {
-    if (!grinderId) {
-      setParams(null);
-      setModelError(null);
-      return;
-    }
-    setLoadingModel(true);
+  const handleGrinderChange = (value: string | null) => {
+    setGrinderId(value);
     setParams(null);
     setModelError(null);
+    setLoadingModel(value !== null);
+  };
+
+  useEffect(() => {
+    if (!grinderId) return;
     getGrindModelParams(Number(grinderId))
       .then((r) => {
         setParams(r);
@@ -262,7 +262,7 @@ export default function ShotPlannerPage() {
           placeholder="Select a grinder…"
           data={grinderData}
           value={grinderId}
-          onChange={setGrinderId}
+          onChange={handleGrinderChange}
           searchable
           clearable
           style={{ flex: 1 }}
