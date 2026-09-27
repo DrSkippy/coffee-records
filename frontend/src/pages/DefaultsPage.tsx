@@ -1,5 +1,4 @@
 import {
-  Autocomplete,
   Button,
   Checkbox,
   Grid,
@@ -117,11 +116,12 @@ export default function DefaultsPage() {
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Grid gutter="sm">
           <Grid.Col span={{ base: 12, sm: 6 }}>
-            <Autocomplete
+            <TextInput
               label="Maker"
-              required
-              data={["Scott", "Sara"]}
-              {...form.getInputProps("maker")}
+              value="Scott before 9:30 am, Sara after"
+              description="Set automatically on the New Shot form"
+              readOnly
+              variant="filled"
             />
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 6 }}>

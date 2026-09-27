@@ -13,6 +13,8 @@ interface ShotFilters {
 export const getShots = (filters: ShotFilters = {}) =>
   api.get<Shot[]>("/shots", { params: filters }).then((r) => r.data);
 
+export const getMakers = () => api.get<string[]>("/shots/makers").then((r) => r.data);
+
 export const getShot = (id: number) =>
   api.get<Shot>(`/shots/${id}`).then((r) => r.data);
 

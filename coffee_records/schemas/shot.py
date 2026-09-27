@@ -159,6 +159,7 @@ class ShotCsvImportFields(BaseModel):
     """Shot form values recovered from an imported CSV (unmatched fields are None)."""
 
     date: Date | None = None
+    recorded_at: datetime | None = None
     maker: str | None = None
     coffee_id: int | None = None
     dose_weight: float | None = None

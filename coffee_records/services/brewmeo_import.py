@@ -535,6 +535,7 @@ def build_import(
     shot_date = shot.when("Date")
     fields = ShotCsvImportFields(
         date=shot_date.date() if shot_date else None,
+        recorded_at=shot_date,
         maker=shot.text("Operator"),
         coffee_id=coffee_id,
         dose_weight=shot.positive("Dose"),

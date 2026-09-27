@@ -1,6 +1,5 @@
 import {
   Anchor,
-  Autocomplete,
   Button,
   Checkbox,
   FileInput,
@@ -26,7 +25,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { getCoffees } from "../api/coffees";
 import { getBrewingDevices, getGrinders, getScales } from "../api/equipment";
 import { coffeeResourceUrl, telemetryResourceUrl } from "../api/resources";
-import { deleteShotTelemetry, deleteShotVideo, getShot, updateShot, uploadShotTelemetry, uploadShotVideo } from "../api/shots";
+import { deleteShotTelemetry, deleteShotVideo, getMakers, getShot, updateShot, uploadShotTelemetry, uploadShotVideo } from "../api/shots";
+import MakerSelect from "../components/shots/MakerSelect";
 import type { BrewingDevice, Coffee, Grinder, Scale } from "../types";
 
 
@@ -115,6 +115,11 @@ export default function EditShotPage() {
       device_id: "",
     },
   });
+
+  const [makers, setMakers] = useState<string[]>([]);
+  useEffect(() => {
+    getMakers().then(setMakers);
+  }, []);
 
   useEffect(() => {
     const shotId = Number(id);
@@ -264,12 +269,7 @@ export default function EditShotPage() {
             />
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 6 }}>
-            <Autocomplete
-              label="Maker"
-              required
-              data={["Scott", "Sara"]}
-              {...form.getInputProps("maker")}
-            />
+            <MakerSelect required knownMakers={makers} {...form.getInputProps("maker")} />
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 6 }}>
             <Select

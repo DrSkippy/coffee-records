@@ -89,6 +89,7 @@ export interface ShotCsvImport {
   source: string;
   fields: {
     date: string | null;
+    recorded_at: string | null;
     maker: string | null;
     coffee_id: number | null;
     dose_weight: number | null;

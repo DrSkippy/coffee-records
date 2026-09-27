@@ -1,6 +1,5 @@
 import {
   Alert,
-  Autocomplete,
   Button,
   Checkbox,
   FileInput,
@@ -26,7 +25,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { createCoffee, getCoffees } from "../api/coffees";
 import { getDefaults } from "../api/defaults";
 import { getBrewingDevices, getGrinders, getScales } from "../api/equipment";
-import { createShot, uploadShotTelemetry, uploadShotVideo } from "../api/shots";
+import { createShot, getMakers, uploadShotTelemetry, uploadShotVideo } from "../api/shots";
+import MakerSelect from "../components/shots/MakerSelect";
+import { defaultMakerAt } from "../utils/makers";
 import type { BrewingDevice, Coffee, Grinder, Scale, ShotCsvImport } from "../types";
 
 const posToValue = (pos: number): number => {
@@ -86,6 +87,7 @@ export default function NewShotPage() {
   const [grinders, setGrinders] = useState<Grinder[]>([]);
   const [devices, setDevices] = useState<BrewingDevice[]>([]);
   const [scales, setScales] = useState<Scale[]>([]);
+  const [makers, setMakers] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoUploadProgress, setVideoUploadProgress] = useState<number | null>(null);
@@ -99,6 +101,7 @@ export default function NewShotPage() {
   const [sliderPosition, setSliderPosition] = useState(0);
 
   useEffect(() => {
+    getMakers().then(setMakers);
     Promise.all([getCoffees(), getGrinders(), getBrewingDevices(), getScales(), getDefaults()]).then(
       ([c, g, d, s, defaults]) => {
         setCoffees(c);
@@ -107,7 +110,7 @@ export default function NewShotPage() {
         setScales(s);
 
         form.setValues({
-          maker: defaults.maker,
+          maker: defaultMakerAt(new Date()),
           dose_weight: defaults.dose_weight ?? "",
           pre_infusion_time: defaults.pre_infusion_time ?? "",
           extraction_time: defaults.extraction_time ?? "",
@@ -194,7 +197,10 @@ export default function NewShotPage() {
 
   const applyCsvImport = ({ fields, new_coffee, notes }: ShotCsvImport) => {
     if (fields.date) form.setFieldValue("date", dayjs(fields.date).toDate());
+    // Operator from the CSV wins; otherwise default by when the shot was pulled.
     if (fields.maker) form.setFieldValue("maker", fields.maker);
+    else if (fields.recorded_at)
+      form.setFieldValue("maker", defaultMakerAt(dayjs(fields.recorded_at).toDate()));
     if (fields.dose_weight) form.setFieldValue("dose_weight", oneDecimal(fields.dose_weight));
     if (fields.final_weight) form.setFieldValue("final_weight", oneDecimal(fields.final_weight));
     if (fields.extraction_time) form.setFieldValue("extraction_time", fields.extraction_time);
@@ -321,12 +327,7 @@ export default function NewShotPage() {
             />
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 6 }}>
-            <Autocomplete
-              label="Maker"
-              required
-              data={["Scott", "Sara"]}
-              {...form.getInputProps("maker")}
-            />
+            <MakerSelect required knownMakers={makers} {...form.getInputProps("maker")} />
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 6 }}>
             <Select

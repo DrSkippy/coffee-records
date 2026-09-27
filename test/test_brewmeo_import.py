@@ -3,7 +3,7 @@
 import io
 import json
 from collections.abc import Generator
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import pytest
@@ -218,6 +218,8 @@ def test_build_import_new_bag_when_roast_date_differs(
     assert result.fields.grinder_id is not None
     assert result.fields.device_id is not None
     assert result.fields.date == date(2026, 9, 26)
+    assert result.fields.recorded_at == datetime(2026, 9, 26, 6, 29, 10, 628000)
+    assert result.fields.maker is None
     assert result.fields.extraction_time == 37.9
     assert result.fields.grind_setting == "0.8"
     assert result.fields.dose_weight is None

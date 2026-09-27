@@ -129,6 +129,19 @@ def _load_shot(session: object, shot_id: int) -> Shot | None:
     )
 
 
+@shots_bp.get("/makers")
+def list_makers() -> ResponseReturnValue:
+    """List every distinct maker that has logged a shot.
+
+    Returns:
+        JSON array of maker names, sorted case-insensitively.
+    """
+    with get_session() as session:
+        rows = session.query(Shot.maker).distinct().all()
+    makers = sorted({name for (name,) in rows if name}, key=str.casefold)
+    return jsonify(makers)
+
+
 @shots_bp.get("")
 def list_shots() -> ResponseReturnValue:
     """List shots with optional filters.

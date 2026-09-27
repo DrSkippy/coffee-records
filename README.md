@@ -197,7 +197,7 @@ Form to log a shot. All fields except date and maker are optional. The form open
 | Field | Default | Notes |
 |---|---|---|
 | Date | Today | |
-| Maker | Scott | Free-text with Scott / Sara as suggestions |
+| Maker | Scott before 9:30 am, Sara from 9:30 am | Dropdown of Scott, Sara and anyone who has logged a shot; type a new name and pick **Add “…”** to add someone |
 | Coffee | Most recently entered | Searchable select from the coffees list |
 | Drink type | americano | americano / latte / cappuccino / drip / aeropress |
 | Grinder | Option-O (matched by name) | Searchable select |
@@ -230,7 +230,7 @@ Equipment defaults (grinder, machine, scale) are resolved by substring match on 
 | Extraction time | Extraction time (rounded to 0.1 s) |
 | Grinder Setting | Grind setting |
 | Preinfusion Time | Pre-infusion time |
-| Operator | Maker |
+| Operator | Maker (if empty, Scott/Sara by the time the shot was pulled) |
 | Beans + Roastery + Roasting Date | Coffee: an existing coffee must fuzzy-match name and roaster **and** have the same roast date. Otherwise a new coffee (with Roast Color → roast level, Variety, and origin/process copied from an earlier bag of the same beans) is offered as "New: …" and created on save. |
 | Grinder / Espresso Machine name, brand, model | Grinder / Machine, matched by shared words in `make + model`. Equipment is never created; unmatched equipment is reported and kept in the notes. |
 
@@ -308,7 +308,7 @@ Grinders with 3 or fewer shots in the selected range are silently omitted.
 
 Editable defaults for the New Shot form. Any value saved here pre-fills the corresponding field when opening a new shot, so only changed values need to be entered.
 
-Fields: maker, dose weight, pre-infusion time, extraction time, final weight, drink type, grinder temp before, and the four prep technique toggles (Wedge, Shaker, WDT, Flow Taper).
+Fields: dose weight, pre-infusion time, extraction time, final weight, drink type, grinder temp before, and the four prep technique toggles (Wedge, Shaker, WDT, Flow Taper). Maker isn't set here: the New Shot form picks Scott before 9:30 am and Sara after.
 
 ---
 
@@ -373,6 +373,7 @@ Requests without a valid key return `401 Unauthorized`. Authentication is disabl
 |---|---|---|
 | `GET` | `/api/shots` | List shots (newest first, max 50 by default) |
 | `POST` | `/api/shots` | Create a shot |
+| `GET` | `/api/shots/makers` | Distinct maker names from all shots, sorted |
 | `POST` | `/api/shots/import-csv` | Parse a Brewmeo shot CSV into New Shot form values, a proposed coffee, notes, and telemetry JSON (`multipart/form-data`, field `file`). Writes nothing. |
 | `GET` | `/api/shots/<id>` | Get one shot |
 | `PUT` | `/api/shots/<id>` | Update a shot |

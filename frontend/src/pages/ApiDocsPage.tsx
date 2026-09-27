@@ -205,6 +205,12 @@ const sections: Section[] = [
         curl: `curl -X DELETE ${BASE}/api/shots/42/video`,
       },
       {
+        method: "GET",
+        path: "/api/shots/makers",
+        description: "List every distinct maker name that has logged a shot, sorted.",
+        curl: `curl ${BASE}/api/shots/makers`,
+      },
+      {
         method: "POST",
         path: "/api/shots/import-csv",
         description: "Parse a Brewmeo shot CSV (multipart/form-data, field: file) into New Shot form values, a proposed new coffee, notes, and Beanconqueror-style telemetry JSON. Writes nothing to the database.",

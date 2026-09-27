@@ -4,7 +4,8 @@ import { IconFileImport } from "@tabler/icons-react";
 import { isAxiosError } from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getShots, importShotCsv } from "../api/shots";
+import { getMakers, getShots, importShotCsv } from "../api/shots";
+import { makerOptions } from "../utils/makers";
 import ShotCard from "../components/shots/ShotCard";
 import type { Shot } from "../types";
 
@@ -13,6 +14,7 @@ export default function ShotsPage() {
   const [makerFilter, setMakerFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
+  const [makers, setMakers] = useState<string[]>([]);
   const navigate = useNavigate();
 
   const handleMakerChange = (value: string | null) => {
@@ -34,6 +36,10 @@ export default function ShotsPage() {
       setImporting(false);
     }
   };
+
+  useEffect(() => {
+    getMakers().then(setMakers);
+  }, []);
 
   useEffect(() => {
     getShots({ maker: makerFilter ?? undefined, limit: 50 })
@@ -64,7 +70,7 @@ export default function ShotsPage() {
       <Group>
         <Select
           placeholder="All makers"
-          data={["Scott", "Sara"]}
+          data={makerOptions(...makers)}
           value={makerFilter}
           onChange={handleMakerChange}
           clearable

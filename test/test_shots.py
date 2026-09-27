@@ -370,3 +370,16 @@ def test_update_shot_valid_grind_setting(client: FlaskClient) -> None:
     resp = client.put(f"/api/shots/{shot['id']}", json={"grind_setting": "20.0"})
     assert resp.status_code == 200
     assert resp.get_json()["grind_setting"] == "20.0"
+
+
+def test_list_makers_returns_distinct_sorted_names(client: FlaskClient) -> None:
+    """GET /api/shots/makers lists each maker once, case-insensitively sorted."""
+    for maker in ("Sara", "scott", "Sara", "Alex"):
+        response = client.post(
+            "/api/shots", json={"date": "2026-09-27", "maker": maker}
+        )
+        assert response.status_code == 201
+    makers = client.get("/api/shots/makers").get_json()
+    assert makers == sorted(set(makers), key=str.casefold)
+    assert {"Alex", "Sara", "scott"} <= set(makers)
+    assert makers.count("Sara") == 1
