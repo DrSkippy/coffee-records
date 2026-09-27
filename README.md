@@ -18,15 +18,32 @@ A personal espresso shot tracking application. Log every shot with dose, yield, 
 
 ### Docker (production)
 
-The image is built externally and pushed to the local registry at `localhost:5000`. `docker-compose.yml` pulls from there rather than building in place.
+The image is built externally and pushed to the local registry at `localhost:5000`. `docker-compose.yml` runs `:latest` from there rather than building in place.
+
+Each release is pushed twice: once tagged with its version (from `pyproject.toml`), which stays in the registry as a rollback point, and once as `latest`, which is what the stack runs:
 
 ```bash
-docker build -t localhost:5000/coffee-records:latest .
+VERSION=$(poetry version -s)
+docker build -t localhost:5000/coffee-records:$VERSION .
+docker tag localhost:5000/coffee-records:$VERSION localhost:5000/coffee-records:latest
+docker push localhost:5000/coffee-records:$VERSION
 docker push localhost:5000/coffee-records:latest
+
+# confirm latest points at the new build
+curl -s localhost:5000/v2/coffee-records/tags/list
+```
+
+Tag `latest` with a separate `docker tag` as shown. Passing two `-t` flags to one `docker build -q` once left `latest` on the previous image.
+
+Then deploy from Dockge, or run:
+
+```bash
 docker compose pull
 docker compose run --rm coffee-records python bin/backfill_telemetry_thumbnails.py
 docker compose up -d --force-recreate
 ```
+
+**Rolling back:** set `image:` in `docker-compose.yml` to an earlier version tag (e.g. `localhost:5000/coffee-records:0.8.0`), then pull and recreate. Check that the older version doesn't depend on a schema change made by a newer migration.
 
 The backfill runs before the new frontend is deployed and is safe to repeat; it skips existing thumbnails by default. Use `--force` only to regenerate every preview. No database migration is required for telemetry thumbnails.
 
@@ -69,6 +86,8 @@ npm install
 npm run dev           # Vite dev server on :5173, proxies /api to :5000
 ```
 
+On the Docker host, port 5000 is taken by the local registry (and 5001 by Dockge). To run the backend there, start Flask on another port (`flask … run --port 5099`) and point the `/api` and `/health` proxy targets in `frontend/vite.config.ts` at it. Don't commit that change.
+
 ---
 
 ## Configuration
@@ -96,7 +115,7 @@ server:
   workers: 4
 
 uploads:
-  coffee_image_dir: "/var/www/html/resources/coffee"
+  coffee_image_dir: "/resources"     # container path; mounted from /var/www/html/resources/coffee
   coffee_image_base_url: "https://resources.drskippy.app/coffee"
 ```
 
@@ -139,7 +158,7 @@ Run these once against an existing database when upgrading:
 | `bin/migrate_maker_to_varchar.py` | Converts `shots.maker` from enum to VARCHAR |
 | `bin/add_extraction_delta_column.py` | Adds `shots.extraction_delta`; backfills −5 for "over extracted" notes, +5 for "under extracted" |
 | `bin/migrate_grind_model.py` | Adds `aeropress` to `drink_type` enum; creates `grind_model_trainings` and `grind_model_coffee_intercepts` tables |
-| `bin/add_shot_defaults_table.py` | Creates the `shot_defaults` singleton table used by the Settings page |
+| `bin/add_shot_defaults_table.py` | Creates the `shot_defaults` singleton table used by the Defaults page |
 | `bin/add_telemetry_column.py` | Adds `shots.telemetry_filename` for shot telemetry JSON uploads |
 
 ```bash
@@ -160,13 +179,19 @@ The command skips existing PNGs, reports generated/skipped/failed counts, and ex
 
 ---
 
-## Running tests
+## Running tests and checks
 
 ```bash
 poetry run pytest --cov=coffee_records --cov-report=term-missing test/
+poetry run black --check .
+poetry run mypy coffee_records bin test      # strict mode, set in pyproject.toml
+
+cd frontend
+npx tsc -b --noEmit
+npx eslint .
 ```
 
-Tests use an in-memory SQLite database — no PostgreSQL required.
+Tests use an in-memory SQLite database — no PostgreSQL required. The Brewmeo import tests use a trimmed sample export in `test/fixtures/brewmeo_shot.csv`, because `import_data/` is gitignored.
 
 ---
 
@@ -304,7 +329,7 @@ Grinders are not a dropdown filter — instead, each grinder with more than 3 sh
 
 Grinders with 3 or fewer shots in the selected range are silently omitted.
 
-### Settings
+### Defaults
 
 Editable defaults for the New Shot form. Any value saved here pre-fills the corresponding field when opening a new shot, so only changed values need to be entered.
 
@@ -463,7 +488,7 @@ Telemetry upload returns `422` when the JSON is malformed or contains no usable 
 | `GET` | `/api/defaults` | Return current shot defaults (creates singleton row with built-in seeds on first call) |
 | `PUT` | `/api/defaults` | Update shot defaults |
 
-**Defaults object** (same shape for GET response and PUT body):
+**Defaults object** (same shape for GET response and PUT body). `maker` is still stored and required, but the New Shot form no longer reads it: it picks Scott before 9:30 am and Sara after.
 
 ```json
 {
