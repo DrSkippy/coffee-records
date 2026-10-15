@@ -33,11 +33,7 @@ from coffee_records.services.telemetry import (
 )
 
 FIXTURE = Path(__file__).parent / "fixtures" / "brewmeo_shot.csv"
-SAMPLE_JSON = (
-    Path(__file__).parent.parent
-    / "sample_data"
-    / "Beanconqueror_Flowprofile_JSON_08_06_41_20_04_2026.json"
-)
+SAMPLE_JSON = Path(__file__).parent / "fixtures" / "beanconqueror_flow_profile.json"
 
 
 @pytest.fixture()
