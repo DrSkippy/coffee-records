@@ -1,5 +1,6 @@
 """Health check blueprint."""
 
+import logging
 import tomllib
 from functools import lru_cache
 from pathlib import Path
@@ -7,10 +8,12 @@ from pathlib import Path
 from flask import Blueprint, jsonify
 from flask.typing import ResponseReturnValue
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from coffee_records.database import get_session
 
 health_bp = Blueprint("health", __name__)
+logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=1)
@@ -21,7 +24,7 @@ def _read_version() -> str:
         Version string from [tool.poetry] section.
     """
     pyproject = Path(__file__).parent.parent.parent / "pyproject.toml"
-    with open(pyproject, "rb") as f:
+    with pyproject.open("rb") as f:
         data = tomllib.load(f)
     return str(data["tool"]["poetry"]["version"])
 
@@ -37,7 +40,8 @@ def health() -> ResponseReturnValue:
         with get_session() as session:
             session.execute(text("SELECT 1"))
         db_status = "ok"
-    except Exception:
+    except SQLAlchemyError:
+        logger.exception("Health check: database query failed")
         db_status = "error"
 
     return jsonify({"status": "ok", "database": db_status})

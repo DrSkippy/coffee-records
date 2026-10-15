@@ -25,6 +25,7 @@ from coffee_records.models.coffee import Coffee, RoastLevel
 from coffee_records.models.equipment import BrewingDevice, Grinder
 from coffee_records.schemas.coffee import CoffeeCreate
 from coffee_records.schemas.shot import ShotCsvImportFields, ShotCsvImportResponse
+from coffee_records.services.brew_time import format_brew_time
 from coffee_records.services.matching import best_equipment_match, is_same_beans
 from coffee_records.services.telemetry import (
     TelemetryValidationError,
@@ -189,19 +190,6 @@ def parse_brewmeo_csv(text: str) -> BrewmeoShot:
     for series in (shot.weight, shot.pressure, shot.temperature):
         series.sort(key=lambda sample: sample[0])
     return shot
-
-
-def format_brew_time(elapsed: float) -> str:
-    """Format seconds as Beanconqueror ``S.T`` brew time (T = tenths).
-
-    Args:
-        elapsed: Seconds since the start of the shot.
-
-    Returns:
-        E.g. ``37.908`` -> ``"37.9"``, ``0.96`` -> ``"1.0"``.
-    """
-    tenths = round(elapsed * 10)
-    return f"{tenths // 10}.{tenths % 10}"
 
 
 def _clock(start: datetime, elapsed: float) -> str:
