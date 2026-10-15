@@ -1,17 +1,23 @@
 """Shots blueprint — /api/shots."""
 
-import uuid
-from datetime import date
-from pathlib import Path
-from typing import cast
+from http import HTTPStatus
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
-from sqlalchemy.orm import joinedload
-from werkzeug.datastructures import FileStorage
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session, joinedload
 
-from coffee_records.config import Config
+from coffee_records.blueprints.helpers import (
+    apply_updates,
+    get_config,
+    get_or_404,
+    get_storage,
+    query_date,
+    query_int,
+    require_upload,
+)
 from coffee_records.database import get_session
+from coffee_records.errors import NotFoundError, UnprocessableError
 from coffee_records.models.equipment import Grinder
 from coffee_records.models.shot import Shot
 from coffee_records.schemas.shot import ShotCreate, ShotResponse, ShotUpdate
@@ -21,6 +27,7 @@ from coffee_records.services.brewmeo_import import (
     parse_brewmeo_csv,
 )
 from coffee_records.services.grind_validation import validate_grind_setting
+from coffee_records.services.storage import VIDEO_EXTENSIONS
 from coffee_records.services.telemetry import (
     TelemetryValidationError,
     render_telemetry_thumbnail,
@@ -28,82 +35,16 @@ from coffee_records.services.telemetry import (
 
 shots_bp = Blueprint("shots", __name__, url_prefix="/api/shots")
 
-ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".mov", ".webm", ".avi", ".mkv"}
-ALLOWED_TELEMETRY_EXTENSIONS = {".json"}
+DEFAULT_VIDEO_EXTENSION = ".mp4"
+_SHOT_RELATIONSHIPS = (
+    joinedload(Shot.coffee),
+    joinedload(Shot.grinder),
+    joinedload(Shot.device),
+    joinedload(Shot.scale),
+)
 
 
-def _cfg() -> Config:
-    """Return the application config."""
-    return cast(Config, current_app.config["APP_CONFIG"])
-
-
-def _save_video(file: FileStorage, cfg: Config) -> str:
-    """Save an uploaded video and return its filename.
-
-    Args:
-        file: The uploaded file object.
-        cfg: Application config.
-
-    Returns:
-        The saved filename (UUID-based).
-    """
-    ext = Path(file.filename or "").suffix.lower()
-    if ext not in ALLOWED_VIDEO_EXTENSIONS:
-        ext = ".mp4"
-    filename = f"{uuid.uuid4()}{ext}"
-    dest = Path(cfg.uploads.coffee_image_dir)
-    dest.mkdir(parents=True, exist_ok=True)
-    file.save(dest / filename)
-    return filename
-
-
-def _delete_video_file(filename: str, cfg: Config) -> None:
-    """Delete a video file from disk if it exists.
-
-    Args:
-        filename: The filename to delete.
-        cfg: Application config.
-    """
-    path = Path(cfg.uploads.coffee_image_dir) / filename
-    if path.exists():
-        path.unlink()
-
-
-def _save_telemetry(payload: bytes, thumbnail: bytes, cfg: Config) -> str:
-    """Atomically save telemetry JSON and its PNG thumbnail."""
-    stem = str(uuid.uuid4())
-    filename = f"{stem}.json"
-    dest = Path(cfg.uploads.coffee_image_dir) / "telemetry"
-    dest.mkdir(parents=True, exist_ok=True)
-    json_path = dest / filename
-    thumbnail_path = dest / f"{stem}.png"
-    json_temp = dest / f".{stem}.json.tmp"
-    thumbnail_temp = dest / f".{stem}.png.tmp"
-    try:
-        json_temp.write_bytes(payload)
-        thumbnail_temp.write_bytes(thumbnail)
-        json_temp.replace(json_path)
-        thumbnail_temp.replace(thumbnail_path)
-    except OSError:
-        for path in (json_temp, thumbnail_temp, json_path, thumbnail_path):
-            path.unlink(missing_ok=True)
-        raise
-    return filename
-
-
-def _delete_telemetry_file(filename: str, cfg: Config) -> None:
-    """Delete a telemetry file from disk if it exists.
-
-    Args:
-        filename: The filename to delete.
-        cfg: Application config.
-    """
-    directory = Path(cfg.uploads.coffee_image_dir) / "telemetry"
-    (directory / filename).unlink(missing_ok=True)
-    (directory / Path(filename).with_suffix(".png").name).unlink(missing_ok=True)
-
-
-def _load_shot(session: object, shot_id: int) -> Shot | None:
+def _load_shot(session: Session, shot_id: int) -> Shot | None:
     """Load a Shot with all relationships eagerly.
 
     Args:
@@ -113,20 +54,59 @@ def _load_shot(session: object, shot_id: int) -> Shot | None:
     Returns:
         Shot instance with relationships loaded, or None.
     """
-    from sqlalchemy.orm import Session
-
-    s: Session = session  # type: ignore[assignment]
     return (
-        s.query(Shot)
-        .options(
-            joinedload(Shot.coffee),
-            joinedload(Shot.grinder),
-            joinedload(Shot.device),
-            joinedload(Shot.scale),
-        )
+        session.query(Shot)
+        .options(*_SHOT_RELATIONSHIPS)
         .filter(Shot.id == shot_id)
         .first()
     )
+
+
+def _shot_response(
+    session: Session, shot_id: int, status: int = HTTPStatus.OK
+) -> ResponseReturnValue:
+    """Reload a shot with relationships and serialize it.
+
+    Args:
+        session: SQLAlchemy session.
+        shot_id: The shot primary key.
+        status: HTTP status code.
+
+    Returns:
+        JSON ShotResponse.
+
+    Raises:
+        NotFoundError: If the shot does not exist.
+    """
+    shot = _load_shot(session, shot_id)
+    if shot is None:
+        raise NotFoundError("Shot not found")
+    return jsonify(ShotResponse.from_orm_shot(shot).model_dump(mode="json")), status
+
+
+def _check_grind_setting(
+    session: Session, grind_setting: str | None, grinder_id: int | None
+) -> None:
+    """Validate a grind setting's notation against its grinder.
+
+    Args:
+        session: SQLAlchemy session.
+        grind_setting: Setting to validate (skipped when empty).
+        grinder_id: Grinder the setting applies to (skipped when None/unknown).
+
+    Raises:
+        UnprocessableError: If the notation does not fit the grinder.
+    """
+    if not grind_setting or grinder_id is None:
+        return
+    grinder = session.get(Grinder, grinder_id)
+    if grinder is None:
+        return
+    error = validate_grind_setting(
+        grind_setting, grinder.make, grinder.model, get_config().grinders
+    )
+    if error:
+        raise UnprocessableError(error)
 
 
 @shots_bp.get("/makers")
@@ -152,27 +132,22 @@ def list_shots() -> ResponseReturnValue:
         JSON array of ShotResponse objects.
     """
     maker = request.args.get("maker")
-    coffee_id = request.args.get("coffee_id", type=int)
-    date_from_str = request.args.get("date_from")
-    date_to_str = request.args.get("date_to")
-    limit = request.args.get("limit", type=int)
-    offset = request.args.get("offset", default=0, type=int)
+    coffee_id = query_int("coffee_id")
+    date_from = query_date("date_from")
+    date_to = query_date("date_to")
+    limit = query_int("limit")
+    offset = query_int("offset")
 
     with get_session() as session:
-        q = session.query(Shot).options(
-            joinedload(Shot.coffee),
-            joinedload(Shot.grinder),
-            joinedload(Shot.device),
-            joinedload(Shot.scale),
-        )
+        q = session.query(Shot).options(*_SHOT_RELATIONSHIPS)
         if maker:
             q = q.filter(Shot.maker == maker)
         if coffee_id is not None:
             q = q.filter(Shot.coffee_id == coffee_id)
-        if date_from_str:
-            q = q.filter(Shot.date >= date.fromisoformat(date_from_str))
-        if date_to_str:
-            q = q.filter(Shot.date <= date.fromisoformat(date_to_str))
+        if date_from:
+            q = q.filter(Shot.date >= date_from)
+        if date_to:
+            q = q.filter(Shot.date <= date_to)
         q = q.order_by(Shot.date.desc(), Shot.created_at.desc())
         if offset:
             q = q.offset(offset)
@@ -193,21 +168,12 @@ def create_shot() -> ResponseReturnValue:
     """
     payload = ShotCreate.model_validate(request.get_json())
     with get_session() as session:
-        if payload.grind_setting and payload.grinder_id is not None:
-            grinder = session.get(Grinder, payload.grinder_id)
-            if grinder:
-                error = validate_grind_setting(
-                    payload.grind_setting, grinder.make, grinder.model
-                )
-                if error:
-                    return jsonify({"error": error}), 422
+        _check_grind_setting(session, payload.grind_setting, payload.grinder_id)
         shot = Shot(**payload.model_dump())
         session.add(shot)
         session.commit()
         # reload with relationships
-        loaded = _load_shot(session, shot.id)
-        assert loaded is not None
-        return jsonify(ShotResponse.from_orm_shot(loaded).model_dump(mode="json")), 201
+        return _shot_response(session, shot.id, HTTPStatus.CREATED)
 
 
 @shots_bp.post("/import-csv")
@@ -221,20 +187,23 @@ def import_shot_csv() -> ResponseReturnValue:
     Returns:
         JSON ShotCsvImportResponse, or 400/422 on a missing or invalid file.
     """
-    if "file" not in request.files:
-        return jsonify({"error": "No file provided"}), 400
-    file = request.files["file"]
-    if not file.filename:
-        return jsonify({"error": "Empty filename"}), 400
+    upload = require_upload()
     try:
-        text = file.read().decode("utf-8-sig")
+        text = upload.read().decode("utf-8-sig")
         shot = parse_brewmeo_csv(text)
     except UnicodeDecodeError:
-        return jsonify({"error": "CSV must be UTF-8 text"}), 422
+        raise UnprocessableError("CSV must be UTF-8 text") from None
     except BrewmeoImportError as exc:
-        return jsonify({"error": str(exc)}), 422
+        raise UnprocessableError(str(exc)) from exc
+    config = get_config()
     with get_session() as session:
-        result = build_import(session, shot, file.filename)
+        result = build_import(
+            session,
+            shot,
+            upload.filename or "",
+            brewmeo=config.brewmeo,
+            matching=config.matching,
+        )
     return jsonify(result.model_dump(mode="json"))
 
 
@@ -249,15 +218,15 @@ def get_shot(shot_id: int) -> ResponseReturnValue:
         JSON ShotResponse or 404.
     """
     with get_session() as session:
-        shot = _load_shot(session, shot_id)
-        if shot is None:
-            return jsonify({"error": "Shot not found"}), 404
-        return jsonify(ShotResponse.from_orm_shot(shot).model_dump(mode="json"))
+        return _shot_response(session, shot_id)
 
 
 @shots_bp.put("/<int:shot_id>")
 def update_shot(shot_id: int) -> ResponseReturnValue:
     """Update a shot.
+
+    The grind setting is only re-validated when it changes, against the
+    payload's grinder if given, else the shot's current grinder.
 
     Args:
         shot_id: Shot primary key.
@@ -267,37 +236,22 @@ def update_shot(shot_id: int) -> ResponseReturnValue:
     """
     payload = ShotUpdate.model_validate(request.get_json())
     with get_session() as session:
-        shot = session.get(Shot, shot_id)
-        if shot is None:
-            return jsonify({"error": "Shot not found"}), 404
-        if (
-            payload.grind_setting is not None
-            and payload.grind_setting != shot.grind_setting
-        ):
+        shot = get_or_404(session, Shot, shot_id, "Shot")
+        if payload.grind_setting != shot.grind_setting:
             effective_grinder_id = (
                 payload.grinder_id
                 if payload.grinder_id is not None
                 else shot.grinder_id
             )
-            if effective_grinder_id is not None:
-                grinder = session.get(Grinder, effective_grinder_id)
-                if grinder:
-                    error = validate_grind_setting(
-                        payload.grind_setting, grinder.make, grinder.model
-                    )
-                    if error:
-                        return jsonify({"error": error}), 422
-        for field, value in payload.model_dump(exclude_none=True).items():
-            setattr(shot, field, value)
+            _check_grind_setting(session, payload.grind_setting, effective_grinder_id)
+        apply_updates(shot, payload)
         session.commit()
-        loaded = _load_shot(session, shot_id)
-        assert loaded is not None
-        return jsonify(ShotResponse.from_orm_shot(loaded).model_dump(mode="json"))
+        return _shot_response(session, shot_id)
 
 
 @shots_bp.delete("/<int:shot_id>")
 def delete_shot(shot_id: int) -> ResponseReturnValue:
-    """Delete a shot.
+    """Delete a shot and, after the commit succeeds, its media files.
 
     Args:
         shot_id: Shot primary key.
@@ -306,16 +260,16 @@ def delete_shot(shot_id: int) -> ResponseReturnValue:
         204 on success, 404 if not found.
     """
     with get_session() as session:
-        shot = session.get(Shot, shot_id)
-        if shot is None:
-            return jsonify({"error": "Shot not found"}), 404
-        if shot.video_filename:
-            _delete_video_file(shot.video_filename, _cfg())
-        if shot.telemetry_filename:
-            _delete_telemetry_file(shot.telemetry_filename, _cfg())
+        shot = get_or_404(session, Shot, shot_id, "Shot")
+        video, telemetry = shot.video_filename, shot.telemetry_filename
         session.delete(shot)
         session.commit()
-        return "", 204
+    storage = get_storage()
+    if video:
+        storage.delete(video)
+    if telemetry:
+        storage.delete_telemetry(telemetry)
+    return "", HTTPStatus.NO_CONTENT
 
 
 @shots_bp.post("/<int:shot_id>/video")
@@ -328,23 +282,23 @@ def upload_shot_video(shot_id: int) -> ResponseReturnValue:
     Returns:
         JSON updated ShotResponse or 400/404.
     """
-    if "file" not in request.files:
-        return jsonify({"error": "No file provided"}), 400
-    file = request.files["file"]
-    if not file.filename:
-        return jsonify({"error": "Empty filename"}), 400
-    cfg = _cfg()
+    upload = require_upload()
+    storage = get_storage()
     with get_session() as session:
-        shot = session.get(Shot, shot_id)
-        if shot is None:
-            return jsonify({"error": "Shot not found"}), 404
-        if shot.video_filename:
-            _delete_video_file(shot.video_filename, cfg)
-        shot.video_filename = _save_video(file, cfg)
-        session.commit()
-        loaded = _load_shot(session, shot_id)
-        assert loaded is not None
-        return jsonify(ShotResponse.from_orm_shot(loaded).model_dump(mode="json"))
+        shot = get_or_404(session, Shot, shot_id, "Shot")
+        previous = shot.video_filename
+        new_filename = storage.save_upload(
+            upload, VIDEO_EXTENSIONS, DEFAULT_VIDEO_EXTENSION
+        )
+        shot.video_filename = new_filename
+        try:
+            session.commit()
+        except SQLAlchemyError:
+            storage.delete(new_filename)
+            raise
+        if previous:
+            storage.delete(previous)
+        return _shot_response(session, shot_id)
 
 
 @shots_bp.delete("/<int:shot_id>/video")
@@ -357,18 +311,14 @@ def delete_shot_video(shot_id: int) -> ResponseReturnValue:
     Returns:
         JSON updated ShotResponse or 404.
     """
-    cfg = _cfg()
     with get_session() as session:
-        shot = session.get(Shot, shot_id)
-        if shot is None:
-            return jsonify({"error": "Shot not found"}), 404
-        if shot.video_filename:
-            _delete_video_file(shot.video_filename, cfg)
+        shot = get_or_404(session, Shot, shot_id, "Shot")
+        previous = shot.video_filename
+        if previous:
             shot.video_filename = None
             session.commit()
-        loaded = _load_shot(session, shot_id)
-        assert loaded is not None
-        return jsonify(ShotResponse.from_orm_shot(loaded).model_dump(mode="json"))
+            get_storage().delete(previous)
+        return _shot_response(session, shot_id)
 
 
 @shots_bp.post("/<int:shot_id>/telemetry")
@@ -379,36 +329,28 @@ def upload_shot_telemetry(shot_id: int) -> ResponseReturnValue:
         shot_id: Shot primary key.
 
     Returns:
-        JSON updated ShotResponse or 400/404.
+        JSON updated ShotResponse or 400/404/422.
     """
-    if "file" not in request.files:
-        return jsonify({"error": "No file provided"}), 400
-    file = request.files["file"]
-    if not file.filename:
-        return jsonify({"error": "Empty filename"}), 400
-    cfg = _cfg()
-    payload = file.read()
+    upload = require_upload()
+    payload = upload.read()
     try:
         thumbnail = render_telemetry_thumbnail(payload)
     except TelemetryValidationError as exc:
-        return jsonify({"error": str(exc)}), 422
+        raise UnprocessableError(str(exc)) from exc
+    storage = get_storage()
     with get_session() as session:
-        shot = session.get(Shot, shot_id)
-        if shot is None:
-            return jsonify({"error": "Shot not found"}), 404
-        previous_filename = shot.telemetry_filename
-        new_filename = _save_telemetry(payload, thumbnail, cfg)
+        shot = get_or_404(session, Shot, shot_id, "Shot")
+        previous = shot.telemetry_filename
+        new_filename = storage.save_telemetry(payload, thumbnail)
+        shot.telemetry_filename = new_filename
         try:
-            shot.telemetry_filename = new_filename
             session.commit()
-        except Exception:
-            _delete_telemetry_file(new_filename, cfg)
+        except SQLAlchemyError:
+            storage.delete_telemetry(new_filename)
             raise
-        if previous_filename:
-            _delete_telemetry_file(previous_filename, cfg)
-        loaded = _load_shot(session, shot_id)
-        assert loaded is not None
-        return jsonify(ShotResponse.from_orm_shot(loaded).model_dump(mode="json"))
+        if previous:
+            storage.delete_telemetry(previous)
+        return _shot_response(session, shot_id)
 
 
 @shots_bp.delete("/<int:shot_id>/telemetry")
@@ -421,15 +363,11 @@ def delete_shot_telemetry(shot_id: int) -> ResponseReturnValue:
     Returns:
         JSON updated ShotResponse or 404.
     """
-    cfg = _cfg()
     with get_session() as session:
-        shot = session.get(Shot, shot_id)
-        if shot is None:
-            return jsonify({"error": "Shot not found"}), 404
-        if shot.telemetry_filename:
-            _delete_telemetry_file(shot.telemetry_filename, cfg)
+        shot = get_or_404(session, Shot, shot_id, "Shot")
+        previous = shot.telemetry_filename
+        if previous:
             shot.telemetry_filename = None
             session.commit()
-        loaded = _load_shot(session, shot_id)
-        assert loaded is not None
-        return jsonify(ShotResponse.from_orm_shot(loaded).model_dump(mode="json"))
+            get_storage().delete_telemetry(previous)
+        return _shot_response(session, shot_id)

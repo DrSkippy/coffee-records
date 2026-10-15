@@ -301,8 +301,8 @@ def test_imported_telemetry_saves_like_an_upload(
 ) -> None:
     """End to end: import, create shot, upload the returned telemetry."""
     config = client.application.config["APP_CONFIG"]
-    previous_dir = config.uploads.coffee_image_dir
-    config.uploads.coffee_image_dir = str(tmp_path)
+    previous_dir = config.uploads.media_dir
+    config.uploads.media_dir = str(tmp_path)
     try:
         body = client.post(
             "/api/shots/import-csv",
@@ -336,4 +336,4 @@ def test_imported_telemetry_saves_like_an_upload(
         thumbnail = telemetry_dir / saved["telemetry_thumbnail_filename"]
         assert thumbnail.read_bytes().startswith(b"\x89PNG")
     finally:
-        config.uploads.coffee_image_dir = previous_dir
+        config.uploads.media_dir = previous_dir

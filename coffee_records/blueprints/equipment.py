@@ -1,9 +1,8 @@
 """Equipment blueprint — /api/grinders, /api/brewing-devices, /api/scales."""
 
-from flask import Blueprint, jsonify, request
-from flask.typing import ResponseReturnValue
+from flask import Blueprint
 
-from coffee_records.database import get_session
+from coffee_records.blueprints.crud import CrudResource, register_crud
 from coffee_records.models.equipment import BrewingDevice, Grinder, Scale
 from coffee_records.models.shot import Shot
 from coffee_records.schemas.equipment import (
@@ -23,231 +22,57 @@ equipment_bp = Blueprint("equipment", __name__, url_prefix="/api")
 
 # ── Grinders ──────────────────────────────────────────────────────────────────
 
-
-@equipment_bp.get("/grinders")
-def list_grinders() -> ResponseReturnValue:
-    """List all grinders."""
-    with get_session() as session:
-        grinders = session.query(Grinder).order_by(Grinder.make, Grinder.model).all()
-        return jsonify(
-            [
-                GrinderResponse.model_validate(g).model_dump(mode="json")
-                for g in grinders
-            ]
-        )
-
-
-@equipment_bp.post("/grinders")
-def create_grinder() -> ResponseReturnValue:
-    """Create a grinder."""
-    payload = GrinderCreate.model_validate(request.get_json())
-    with get_session() as session:
-        grinder = Grinder(**payload.model_dump())
-        session.add(grinder)
-        session.commit()
-        session.refresh(grinder)
-        return (
-            jsonify(GrinderResponse.model_validate(grinder).model_dump(mode="json")),
-            201,
-        )
-
-
-@equipment_bp.get("/grinders/<int:grinder_id>")
-def get_grinder(grinder_id: int) -> ResponseReturnValue:
-    """Get a grinder by ID."""
-    with get_session() as session:
-        grinder = session.get(Grinder, grinder_id)
-        if grinder is None:
-            return jsonify({"error": "Grinder not found"}), 404
-        return jsonify(GrinderResponse.model_validate(grinder).model_dump(mode="json"))
-
-
-@equipment_bp.put("/grinders/<int:grinder_id>")
-def update_grinder(grinder_id: int) -> ResponseReturnValue:
-    """Update a grinder."""
-    payload = GrinderUpdate.model_validate(request.get_json())
-    with get_session() as session:
-        grinder = session.get(Grinder, grinder_id)
-        if grinder is None:
-            return jsonify({"error": "Grinder not found"}), 404
-        for field, value in payload.model_dump(exclude_none=True).items():
-            setattr(grinder, field, value)
-        session.commit()
-        session.refresh(grinder)
-        return jsonify(GrinderResponse.model_validate(grinder).model_dump(mode="json"))
-
-
-@equipment_bp.delete("/grinders/<int:grinder_id>")
-def delete_grinder(grinder_id: int) -> ResponseReturnValue:
-    """Delete a grinder. Returns 409 if shots reference it."""
-    with get_session() as session:
-        grinder = session.get(Grinder, grinder_id)
-        if grinder is None:
-            return jsonify({"error": "Grinder not found"}), 404
-        count = session.query(Shot).filter(Shot.grinder_id == grinder_id).count()
-        if count > 0:
-            return (
-                jsonify(
-                    {"error": f"Cannot delete: {count} shot(s) reference this grinder"}
-                ),
-                409,
-            )
-        session.delete(grinder)
-        session.commit()
-        return "", 204
-
+register_crud(
+    equipment_bp,
+    "/grinders",
+    CrudResource(
+        model=Grinder,
+        create_schema=GrinderCreate,
+        update_schema=GrinderUpdate,
+        response_schema=GrinderResponse,
+        singular="grinder",
+        plural="grinders",
+        label="Grinder",
+        shot_column=Shot.grinder_id,
+        conflict_noun="grinder",
+        order_by=(Grinder.make, Grinder.model),
+    ),
+)
 
 # ── Brewing Devices ───────────────────────────────────────────────────────────
 
-
-@equipment_bp.get("/brewing-devices")
-def list_brewing_devices() -> ResponseReturnValue:
-    """List all brewing devices."""
-    with get_session() as session:
-        devices = (
-            session.query(BrewingDevice)
-            .order_by(BrewingDevice.make, BrewingDevice.model)
-            .all()
-        )
-        return jsonify(
-            [
-                BrewingDeviceResponse.model_validate(d).model_dump(mode="json")
-                for d in devices
-            ]
-        )
-
-
-@equipment_bp.post("/brewing-devices")
-def create_brewing_device() -> ResponseReturnValue:
-    """Create a brewing device."""
-    payload = BrewingDeviceCreate.model_validate(request.get_json())
-    with get_session() as session:
-        device = BrewingDevice(**payload.model_dump())
-        session.add(device)
-        session.commit()
-        session.refresh(device)
-        return (
-            jsonify(
-                BrewingDeviceResponse.model_validate(device).model_dump(mode="json")
-            ),
-            201,
-        )
-
-
-@equipment_bp.get("/brewing-devices/<int:device_id>")
-def get_brewing_device(device_id: int) -> ResponseReturnValue:
-    """Get a brewing device by ID."""
-    with get_session() as session:
-        device = session.get(BrewingDevice, device_id)
-        if device is None:
-            return jsonify({"error": "Brewing device not found"}), 404
-        return jsonify(
-            BrewingDeviceResponse.model_validate(device).model_dump(mode="json")
-        )
-
-
-@equipment_bp.put("/brewing-devices/<int:device_id>")
-def update_brewing_device(device_id: int) -> ResponseReturnValue:
-    """Update a brewing device."""
-    payload = BrewingDeviceUpdate.model_validate(request.get_json())
-    with get_session() as session:
-        device = session.get(BrewingDevice, device_id)
-        if device is None:
-            return jsonify({"error": "Brewing device not found"}), 404
-        for field, value in payload.model_dump(exclude_none=True).items():
-            setattr(device, field, value)
-        session.commit()
-        session.refresh(device)
-        return jsonify(
-            BrewingDeviceResponse.model_validate(device).model_dump(mode="json")
-        )
-
-
-@equipment_bp.delete("/brewing-devices/<int:device_id>")
-def delete_brewing_device(device_id: int) -> ResponseReturnValue:
-    """Delete a brewing device. Returns 409 if shots reference it."""
-    with get_session() as session:
-        device = session.get(BrewingDevice, device_id)
-        if device is None:
-            return jsonify({"error": "Brewing device not found"}), 404
-        count = session.query(Shot).filter(Shot.device_id == device_id).count()
-        if count > 0:
-            return (
-                jsonify(
-                    {"error": f"Cannot delete: {count} shot(s) reference this device"}
-                ),
-                409,
-            )
-        session.delete(device)
-        session.commit()
-        return "", 204
-
+register_crud(
+    equipment_bp,
+    "/brewing-devices",
+    CrudResource(
+        model=BrewingDevice,
+        create_schema=BrewingDeviceCreate,
+        update_schema=BrewingDeviceUpdate,
+        response_schema=BrewingDeviceResponse,
+        singular="brewing_device",
+        plural="brewing_devices",
+        label="Brewing device",
+        shot_column=Shot.device_id,
+        conflict_noun="device",
+        order_by=(BrewingDevice.make, BrewingDevice.model),
+    ),
+)
 
 # ── Scales ────────────────────────────────────────────────────────────────────
 
-
-@equipment_bp.get("/scales")
-def list_scales() -> ResponseReturnValue:
-    """List all scales."""
-    with get_session() as session:
-        scales = session.query(Scale).order_by(Scale.make, Scale.model).all()
-        return jsonify(
-            [ScaleResponse.model_validate(s).model_dump(mode="json") for s in scales]
-        )
-
-
-@equipment_bp.post("/scales")
-def create_scale() -> ResponseReturnValue:
-    """Create a scale."""
-    payload = ScaleCreate.model_validate(request.get_json())
-    with get_session() as session:
-        scale = Scale(**payload.model_dump())
-        session.add(scale)
-        session.commit()
-        session.refresh(scale)
-        return jsonify(ScaleResponse.model_validate(scale).model_dump(mode="json")), 201
-
-
-@equipment_bp.get("/scales/<int:scale_id>")
-def get_scale(scale_id: int) -> ResponseReturnValue:
-    """Get a scale by ID."""
-    with get_session() as session:
-        scale = session.get(Scale, scale_id)
-        if scale is None:
-            return jsonify({"error": "Scale not found"}), 404
-        return jsonify(ScaleResponse.model_validate(scale).model_dump(mode="json"))
-
-
-@equipment_bp.put("/scales/<int:scale_id>")
-def update_scale(scale_id: int) -> ResponseReturnValue:
-    """Update a scale."""
-    payload = ScaleUpdate.model_validate(request.get_json())
-    with get_session() as session:
-        scale = session.get(Scale, scale_id)
-        if scale is None:
-            return jsonify({"error": "Scale not found"}), 404
-        for field, value in payload.model_dump(exclude_none=True).items():
-            setattr(scale, field, value)
-        session.commit()
-        session.refresh(scale)
-        return jsonify(ScaleResponse.model_validate(scale).model_dump(mode="json"))
-
-
-@equipment_bp.delete("/scales/<int:scale_id>")
-def delete_scale(scale_id: int) -> ResponseReturnValue:
-    """Delete a scale. Returns 409 if shots reference it."""
-    with get_session() as session:
-        scale = session.get(Scale, scale_id)
-        if scale is None:
-            return jsonify({"error": "Scale not found"}), 404
-        count = session.query(Shot).filter(Shot.scale_id == scale_id).count()
-        if count > 0:
-            return (
-                jsonify(
-                    {"error": f"Cannot delete: {count} shot(s) reference this scale"}
-                ),
-                409,
-            )
-        session.delete(scale)
-        session.commit()
-        return "", 204
+register_crud(
+    equipment_bp,
+    "/scales",
+    CrudResource(
+        model=Scale,
+        create_schema=ScaleCreate,
+        update_schema=ScaleUpdate,
+        response_schema=ScaleResponse,
+        singular="scale",
+        plural="scales",
+        label="Scale",
+        shot_column=Shot.scale_id,
+        conflict_noun="scale",
+        order_by=(Scale.make, Scale.model),
+    ),
+)

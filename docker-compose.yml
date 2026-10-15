@@ -11,6 +11,7 @@ services:
       POSTGRES_HOST: ${POSTGRES_HOST:-192.168.1.91}
       POSTGRES_DATABASE: ${POSTGRES_DATABASE:-coffee-records}
       API_KEY: ${API_KEY:-}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
     volumes:
       - /var/www/html/resources/coffee:/resources
     networks:

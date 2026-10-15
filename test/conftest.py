@@ -9,6 +9,7 @@ from flask.testing import FlaskClient
 # Use SQLite in-memory for tests (no PostgreSQL needed)
 os.environ.setdefault("POSTGRES_USER", "test")
 os.environ.setdefault("POSTGRES_PASSWORD", "test")
+os.environ.setdefault("SECRET_KEY", "test-secret")
 
 
 @pytest.fixture(scope="session")

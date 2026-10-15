@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 def backfill(config: Config, force: bool = False) -> tuple[int, int, int]:
     """Generate missing thumbnails and return generated, skipped, failed counts."""
-    telemetry_dir = Path(config.uploads.coffee_image_dir) / "telemetry"
+    telemetry_dir = Path(config.uploads.media_dir) / "telemetry"
     generated = skipped = failed = 0
     with get_session() as session:
         filenames = session.query(Shot.telemetry_filename).filter(

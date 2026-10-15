@@ -544,9 +544,9 @@ export default function ApiDocsPage() {
       </Text>
 
       <Alert icon={<IconInfoCircle size={16} />} title="Authentication" color="blue" variant="light">
-        When <Code>API_KEY</Code> is configured, every <Code>/api/*</Code> request must include either an{" "}
-        <Code>X-API-Key: &lt;key&gt;</Code> header or an <Code>?api_key=&lt;key&gt;</Code> query
-        parameter. Requests without a valid key receive <Code>401 Unauthorized</Code>. Auth is
+        When <Code>API_KEY</Code> is configured, every <Code>/api/*</Code> request must include an{" "}
+        <Code>X-API-Key: &lt;key&gt;</Code> header (query-string keys are not accepted, so keys
+        never land in proxy logs). Requests without a valid key receive <Code>401 Unauthorized</Code>. Auth is
         disabled when <Code>API_KEY</Code> is unset.
       </Alert>
 

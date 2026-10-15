@@ -413,7 +413,7 @@ def test_api_key_enforced_when_configured(app: object) -> None:
 
     # Temporarily build a second app with api_key configured.
     cfg = Config(app=AppConfig(debug=False, secret_key="test", api_key="secret123"))
-    # Bypass env_override by passing Config directly.
+    # Pass Config directly so environment overrides don't apply.
     protected_app = create_app(
         config=cfg,
         database_url=flask_app.config.get(
@@ -435,9 +435,9 @@ def test_api_key_enforced_when_configured(app: object) -> None:
     resp = test_client.get("/api/version", headers={"X-API-Key": "secret123"})
     assert resp.status_code == 200
 
-    # Key via query param → 200
+    # Key via query param is no longer accepted (keeps keys out of logs) → 401
     resp = test_client.get("/api/version?api_key=secret123")
-    assert resp.status_code == 200
+    assert resp.status_code == 401
 
     # Restore original db state so clean_tables teardown works correctly.
     db_module._engine = _orig_engine

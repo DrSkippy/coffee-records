@@ -2,13 +2,13 @@
 
 from datetime import date as Date
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
 
-from coffee_records.models.shot import DrinkType
+from coffee_records.models.shot import DrinkType, Shot
 from coffee_records.schemas.coffee import CoffeeCreate
+from coffee_records.services.storage import thumbnail_name
 
 
 class ShotCreate(BaseModel):
@@ -98,24 +98,19 @@ class ShotResponse(BaseModel):
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_orm_shot(cls, shot: object) -> "ShotResponse":
+    def from_orm_shot(cls, s: Shot) -> "ShotResponse":
         """Build a ShotResponse with denormalized labels from a Shot ORM instance.
 
         Args:
-            shot: A Shot ORM model instance.
+            s: A Shot ORM model instance with relationships loaded.
 
         Returns:
             ShotResponse with all denormalized labels populated.
         """
-        from coffee_records.models.shot import Shot
-
-        s: Shot = shot  # type: ignore[assignment]
         coffee_name = s.coffee.name if s.coffee else None
         coffee_image_filename = s.coffee.image_filename if s.coffee else None
         telemetry_thumbnail_filename = (
-            Path(s.telemetry_filename).with_suffix(".png").name
-            if s.telemetry_filename
-            else None
+            thumbnail_name(s.telemetry_filename) if s.telemetry_filename else None
         )
         grinder_label = f"{s.grinder.make} {s.grinder.model}" if s.grinder else None
         device_label = f"{s.device.make} {s.device.model}" if s.device else None
