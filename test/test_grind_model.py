@@ -5,6 +5,12 @@ from datetime import date
 import pytest
 from flask.testing import FlaskClient
 
+from coffee_records.errors import (
+    GrinderNotFoundError,
+    InsufficientDataError,
+    NoTrainingError,
+)
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -137,7 +143,7 @@ def test_fit_grind_model_basic(app: object, client: FlaskClient) -> None:
 
     from coffee_records.database import get_session
     from coffee_records.models.grind_model import GrindModelTraining
-    from coffee_records.services.reports import fit_grind_model
+    from coffee_records.services.grind_model import fit_grind_model
 
     flask_app: Flask = app  # type: ignore[assignment]
     _c1, _c2, grinder_id = _setup_training_data(client)
@@ -146,18 +152,18 @@ def test_fit_grind_model_basic(app: object, client: FlaskClient) -> None:
         with get_session() as session:
             result = fit_grind_model(session, grinder_id)
 
-    assert result["grinder_id"] == grinder_id
-    assert result["n_shots_used"] >= 6  # 3 per coffee × 2 coffees
-    assert result["n_coffees"] == 2
-    assert "a0" in result
-    assert "a4" in result
-    assert len(result["coffee_intercepts"]) == 2
-    assert result["training_id"] is not None
+    assert result.grinder_id == grinder_id
+    assert result.n_shots_used >= 6  # 3 per coffee × 2 coffees
+    assert result.n_coffees == 2
+    assert isinstance(result.a0, float)
+    assert isinstance(result.a4, float)
+    assert len(result.coffee_intercepts) == 2
+    assert result.training_id is not None
 
     # Verify persisted
     with flask_app.app_context():
         with get_session() as session:
-            row = session.get(GrindModelTraining, result["training_id"])
+            row = session.get(GrindModelTraining, result.training_id)
             assert row is not None
             assert row.grinder_id == grinder_id
             assert len(row.coffee_intercepts) == 2
@@ -168,7 +174,7 @@ def test_fit_grind_model_excludes_drip(app: object, client: FlaskClient) -> None
     from flask import Flask
 
     from coffee_records.database import get_session
-    from coffee_records.services.reports import fit_grind_model
+    from coffee_records.services.grind_model import fit_grind_model
 
     flask_app: Flask = app  # type: ignore[assignment]
     _c1, _c2, grinder_id = _setup_training_data(client)
@@ -185,7 +191,7 @@ def test_fit_grind_model_excludes_drip(app: object, client: FlaskClient) -> None
             result_before = fit_grind_model(session, grinder_id)
 
     # Coffee with only drip shots doesn't appear in intercepts
-    drip_coffee_ids = {ci["coffee_id"] for ci in result_before["coffee_intercepts"]}
+    drip_coffee_ids = {ci.coffee_id for ci in result_before.coffee_intercepts}
     assert coffee_id not in drip_coffee_ids
 
 
@@ -194,7 +200,7 @@ def test_fit_grind_model_excludes_aeropress(app: object, client: FlaskClient) ->
     from flask import Flask
 
     from coffee_records.database import get_session
-    from coffee_records.services.reports import fit_grind_model
+    from coffee_records.services.grind_model import fit_grind_model
 
     flask_app: Flask = app  # type: ignore[assignment]
     _c1, _c2, grinder_id = _setup_training_data(client)
@@ -209,7 +215,7 @@ def test_fit_grind_model_excludes_aeropress(app: object, client: FlaskClient) ->
         with get_session() as session:
             result = fit_grind_model(session, grinder_id)
 
-    aeropress_coffee_ids = {ci["coffee_id"] for ci in result["coffee_intercepts"]}
+    aeropress_coffee_ids = {ci.coffee_id for ci in result.coffee_intercepts}
     assert coffee_id not in aeropress_coffee_ids
 
 
@@ -218,7 +224,7 @@ def test_fit_grind_model_excludes_first_day(app: object, client: FlaskClient) ->
     from flask import Flask
 
     from coffee_records.database import get_session
-    from coffee_records.services.reports import fit_grind_model
+    from coffee_records.services.grind_model import fit_grind_model
 
     flask_app: Flask = app  # type: ignore[assignment]
     grinder_id = _create_grinder(client)
@@ -244,15 +250,15 @@ def test_fit_grind_model_excludes_first_day(app: object, client: FlaskClient) ->
 
     # First-day shot excluded: n_shots_used should be 3 + 2 = 5, not 4 + 3 = 7
     # (first day excluded for each coffee)
-    assert result["n_shots_used"] == 5
+    assert result.n_shots_used == 5
 
 
 def test_fit_grind_model_insufficient_data(app: object, client: FlaskClient) -> None:
-    """fit_grind_model raises ValueError when fewer than 3 shots are usable."""
+    """fit_grind_model raises InsufficientDataError when fewer than 3 shots are usable."""
     from flask import Flask
 
     from coffee_records.database import get_session
-    from coffee_records.services.reports import fit_grind_model
+    from coffee_records.services.grind_model import fit_grind_model
 
     flask_app: Flask = app  # type: ignore[assignment]
     grinder_id = _create_grinder(client)
@@ -264,21 +270,21 @@ def test_fit_grind_model_insufficient_data(app: object, client: FlaskClient) -> 
 
     with flask_app.app_context():
         with get_session() as session:
-            with pytest.raises(ValueError, match="insufficient_data"):
+            with pytest.raises(InsufficientDataError):
                 fit_grind_model(session, grinder_id)
 
 
 def test_fit_grind_model_grinder_not_found(app: object) -> None:
-    """fit_grind_model raises ValueError for unknown grinder."""
+    """fit_grind_model raises GrinderNotFoundError for an unknown grinder."""
     from flask import Flask
 
     from coffee_records.database import get_session
-    from coffee_records.services.reports import fit_grind_model
+    from coffee_records.services.grind_model import fit_grind_model
 
     flask_app: Flask = app  # type: ignore[assignment]
     with flask_app.app_context():
         with get_session() as session:
-            with pytest.raises(ValueError, match="grinder_not_found"):
+            with pytest.raises(GrinderNotFoundError):
                 fit_grind_model(session, 99999)
 
 
@@ -287,7 +293,7 @@ def test_fit_grind_model_warm_start(app: object, client: FlaskClient) -> None:
     from flask import Flask
 
     from coffee_records.database import get_session
-    from coffee_records.services.reports import fit_grind_model
+    from coffee_records.services.grind_model import fit_grind_model
 
     flask_app: Flask = app  # type: ignore[assignment]
     _c1, _c2, grinder_id = _setup_training_data(client)
@@ -299,11 +305,11 @@ def test_fit_grind_model_warm_start(app: object, client: FlaskClient) -> None:
             result2 = fit_grind_model(session, grinder_id)
 
     # Both trainings should exist and have the same number of shots used
-    assert result1["training_id"] != result2["training_id"]
-    assert result2["n_shots_used"] == result1["n_shots_used"]
+    assert result1.training_id != result2.training_id
+    assert result2.n_shots_used == result1.n_shots_used
     # Second training converges faster (warm-started) — usually in fewer iterations
     # (not guaranteed, but both should converge)
-    assert result2["n_coffees"] == 2
+    assert result2.n_coffees == 2
 
 
 # ---------------------------------------------------------------------------
@@ -316,7 +322,10 @@ def test_get_grind_model_params_latest(app: object, client: FlaskClient) -> None
     from flask import Flask
 
     from coffee_records.database import get_session
-    from coffee_records.services.reports import fit_grind_model, get_grind_model_params
+    from coffee_records.services.grind_model import (
+        fit_grind_model,
+        get_grind_model_params,
+    )
 
     flask_app: Flask = app  # type: ignore[assignment]
     _c1, _c2, grinder_id = _setup_training_data(client)
@@ -327,11 +336,9 @@ def test_get_grind_model_params_latest(app: object, client: FlaskClient) -> None
         with get_session() as session:
             params = get_grind_model_params(session, grinder_id)
 
-    assert params["training_id"] == trained["training_id"]
-    assert "points" in params
-    assert "target_times" in params
-    assert len(params["target_times"]) == 2
-    assert len(params["points"]) >= 6
+    assert params.training_id == trained.training_id
+    assert len(params.target_times) == 2
+    assert len(params.points) >= 6
 
 
 def test_get_grind_model_params_by_id(app: object, client: FlaskClient) -> None:
@@ -339,7 +346,10 @@ def test_get_grind_model_params_by_id(app: object, client: FlaskClient) -> None:
     from flask import Flask
 
     from coffee_records.database import get_session
-    from coffee_records.services.reports import fit_grind_model, get_grind_model_params
+    from coffee_records.services.grind_model import (
+        fit_grind_model,
+        get_grind_model_params,
+    )
 
     flask_app: Flask = app  # type: ignore[assignment]
     _c1, _c2, grinder_id = _setup_training_data(client)
@@ -353,10 +363,10 @@ def test_get_grind_model_params_by_id(app: object, client: FlaskClient) -> None:
         # Fetch by first training id — should get the first one, not the latest
         with get_session() as session:
             params = get_grind_model_params(
-                session, grinder_id, training_id=result1["training_id"]
+                session, grinder_id, training_id=result1.training_id
             )
 
-    assert params["training_id"] == result1["training_id"]
+    assert params.training_id == result1.training_id
 
 
 def test_get_grind_model_params_as_of(app: object, client: FlaskClient) -> None:
@@ -364,7 +374,10 @@ def test_get_grind_model_params_as_of(app: object, client: FlaskClient) -> None:
     from flask import Flask
 
     from coffee_records.database import get_session
-    from coffee_records.services.reports import fit_grind_model, get_grind_model_params
+    from coffee_records.services.grind_model import (
+        fit_grind_model,
+        get_grind_model_params,
+    )
 
     flask_app: Flask = app  # type: ignore[assignment]
     _c1, _c2, grinder_id = _setup_training_data(client)
@@ -378,27 +391,27 @@ def test_get_grind_model_params_as_of(app: object, client: FlaskClient) -> None:
             params = get_grind_model_params(
                 session, grinder_id, as_of=date(2099, 12, 31)
             )
-        assert params["training_id"] == result["training_id"]
+        assert params.training_id == result.training_id
 
         # as_of before the training was done — should find nothing
         with get_session() as session:
-            with pytest.raises(ValueError, match="no_training"):
+            with pytest.raises(NoTrainingError):
                 get_grind_model_params(session, grinder_id, as_of=date(2000, 1, 1))
 
 
 def test_get_grind_model_params_no_training(app: object, client: FlaskClient) -> None:
-    """get_grind_model_params raises ValueError when no training exists."""
+    """get_grind_model_params raises NoTrainingError when no training exists."""
     from flask import Flask
 
     from coffee_records.database import get_session
-    from coffee_records.services.reports import get_grind_model_params
+    from coffee_records.services.grind_model import get_grind_model_params
 
     flask_app: Flask = app  # type: ignore[assignment]
     grinder_id = _create_grinder(client)
 
     with flask_app.app_context():
         with get_session() as session:
-            with pytest.raises(ValueError, match="no_training"):
+            with pytest.raises(NoTrainingError):
                 get_grind_model_params(session, grinder_id)
 
 
