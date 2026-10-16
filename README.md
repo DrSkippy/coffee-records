@@ -29,23 +29,41 @@ docker tag localhost:5000/coffee-records:$VERSION localhost:5000/coffee-records:
 docker push localhost:5000/coffee-records:$VERSION
 docker push localhost:5000/coffee-records:latest
 
-# confirm latest points at the new build
-curl -s localhost:5000/v2/coffee-records/tags/list
+# confirm both tags point at the new build: all three digests must match
+docker image inspect -f '{{.Id}}' localhost:5000/coffee-records:latest
+for t in $VERSION latest; do
+  curl -s -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' \
+    localhost:5000/v2/coffee-records/manifests/$t | python3 -c 'import sys,json; print(json.load(sys.stdin)["config"]["digest"])'
+done
 ```
 
-Tag `latest` with a separate `docker tag` as shown. Passing two `-t` flags to one `docker build -q` once left `latest` on the previous image.
+Tag `latest` with a separate `docker tag` as shown. Passing two `-t` flags to one `docker build -q` once left `latest` on the previous image. Listing the registry's tags doesn't catch this, so compare the digests as above. If `latest` is wrong, `docker tag` it again and push it.
 
-Then deploy from Dockge, or run:
+#### Deploying with Dockge
+
+Dockge doesn't read the repo's `docker-compose.yml`. It runs its own copy at `/opt/stacks/coffee-records/compose.yaml`, with the stack's variables in `/opt/stacks/coffee-records/.env`. Both files are owned by root. When a release adds or changes environment variables, update the stack copy before deploying:
 
 ```bash
-docker compose pull
-docker compose run --rm coffee-records python bin/backfill_telemetry_thumbnails.py
-docker compose up -d --force-recreate
+diff docker-compose.yml /opt/stacks/coffee-records/compose.yaml
+sudo cp docker-compose.yml /opt/stacks/coffee-records/compose.yaml   # if they differ
 ```
 
-**Rolling back:** set `image:` in `docker-compose.yml` to an earlier version tag (e.g. `localhost:5000/coffee-records:0.8.0`), then pull and recreate. Check that the older version doesn't depend on a schema change made by a newer migration.
+The stack's `.env` must define `POSTGRES_USER`, `POSTGRES_PASSWORD` and `SECRET_KEY`. Without `SECRET_KEY` the app refuses to start ([Environment variables](#environment-variables-envrc)), and the repo's compose file won't even bring the stack up. To add one:
 
-The backfill runs before the new frontend is deployed and is safe to repeat; it skips existing thumbnails by default. Use `--force` only to regenerate every preview. No database migration is required for telemetry thumbnails.
+```bash
+sudo sh -c 'echo "SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")" >> /opt/stacks/coffee-records/.env'
+```
+
+Then pull and redeploy from Dockge, or from the stack directory:
+
+```bash
+cd /opt/stacks/coffee-records
+sudo docker compose pull
+sudo docker compose up -d --force-recreate
+curl -s localhost:8181/health        # {"database":"ok","status":"ok"}
+```
+
+**Rolling back:** set `image:` in the stack's `compose.yaml` to an earlier version tag (e.g. `localhost:5000/coffee-records:0.9.0`), then pull and recreate. Check that the older version's models still match the database schema; see [Schema changes](#schema-changes).
 
 The multi-stage Dockerfile compiles the React frontend first, then copies the built assets into the Flask static directory. The single container serves both the API and the SPA.
 
@@ -114,6 +132,7 @@ server:                      # read by gunicorn.conf.py
   workers: 4
 uploads:
   media_dir: "/resources"    # container path; mounted from /var/www/html/resources/coffee
+  coffee_image_base_url: "https://resources.drskippy.app/coffee"   # public URL prefix for coffee photos
 reports:
   default_range_days: 30
 grind_model:                 # reference values the grind model features are centered on
@@ -126,6 +145,7 @@ grind_model:                 # reference values the grind model features are cen
 grinders:                    # notation family keywords
   dual_scale_keywords: ["mazzer"]
   single_number_keywords: ["option-o", "timemore", "baratza"]
+  dual_scale_min_value: 30.0
 matching: { ... }            # fuzzy-match thresholds for coffees/equipment
 brewmeo: { ... }             # Brewmeo CSV signal-processing calibration
 shot_defaults_seed: { ... }  # initial New Shot form defaults
@@ -144,14 +164,18 @@ export POSTGRES_PASSWORD=yourpassword
 export SECRET_KEY=...            # required unless app.debug is true
 ```
 
-Optional (also passed through by `docker-compose.yml`):
+`SECRET_KEY` is Flask's signing key. Any long random string works, and it should stay the same between restarts. Generate one with `python3 -c "import secrets; print(secrets.token_hex(32))"`.
+
+Optional:
 
 ```bash
 export POSTGRES_HOST=192.168.1.91
-export POSTGRES_PORT=5434
+export POSTGRES_PORT=5434        # local only; docker-compose.yml doesn't pass it through
 export POSTGRES_DATABASE=coffee-records
 export API_KEY=your-secret-key   # enforces X-API-Key auth on all /api/* routes
 ```
+
+`docker-compose.yml` passes `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_DATABASE`, `API_KEY` and `SECRET_KEY` into the container. The container takes its port from `config.yaml` (5434).
 
 ---
 
@@ -163,36 +187,44 @@ export API_KEY=your-secret-key   # enforces X-API-Key auth on all /api/* routes
 poetry run python bin/create_tables.py
 ```
 
-### Migrations
+The SQLAlchemy models in `coffee_records/models/` define the schema. `create_tables.py` runs `Base.metadata.create_all()`, which creates every missing table, including the grind model tables. It then seeds the `shot_defaults` singleton row from `config.yaml`'s `shot_defaults_seed`. It's safe to run again: existing tables and an existing defaults row are left alone.
 
-Run these once against an existing database when upgrading:
+### Schema changes
 
-| Script | Purpose |
-|---|---|
-| `bin/add_image_column.py` | Adds `coffees.image_filename` |
-| `bin/add_video_column.py` | Adds `shots.video_filename` |
-| `bin/add_grind_setting_column.py` | Adds `shots.grind_setting` |
-| `bin/migrate_maker_to_varchar.py` | Converts `shots.maker` from enum to VARCHAR |
-| `bin/add_extraction_delta_column.py` | Adds `shots.extraction_delta`; backfills −5 for "over extracted" notes, +5 for "under extracted" |
-| `bin/migrate_grind_model.py` | Adds `aeropress` to `drink_type` enum; creates `grind_model_trainings` and `grind_model_coffee_intercepts` tables |
-| `bin/add_shot_defaults_table.py` | Creates the `shot_defaults` singleton table used by the Defaults page |
-| `bin/add_telemetry_column.py` | Adds `shots.telemetry_filename` for shot telemetry JSON uploads |
+There are no migration scripts. The per-column `bin/add_*` and `bin/migrate_*` scripts were removed once the models held the full schema. `create_all()` creates missing tables but **never alters an existing one**. So when a model gains a column or an enum value, apply the change to the existing database by hand before deploying, for example:
 
-```bash
-poetry run python bin/<script>.py
+```sql
+ALTER TABLE shots ADD COLUMN IF NOT EXISTS new_column VARCHAR;
+ALTER TYPE drink_type ADD VALUE IF NOT EXISTS 'new_value';
 ```
 
-All migration scripts are idempotent (`ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`, `ADD VALUE IF NOT EXISTS`).
+The native Postgres enums are `drink_type`, `roast_level` and `grinder_type`. `shot_defaults.drink_type` is a plain VARCHAR, so it needs no change. Rolling back to an older image is safe only while its models are still a subset of the live schema.
 
 ### Telemetry thumbnail backfill
 
-Thumbnail filenames are derived from the existing telemetry filename, so this feature does not require a schema migration. After building or pulling the updated image, generate previews for existing telemetry with:
+Thumbnails are generated when telemetry is uploaded. Telemetry uploaded before thumbnails existed, or with a missing PNG, can be backfilled from the stack directory:
 
 ```bash
-docker compose run --rm coffee-records python bin/backfill_telemetry_thumbnails.py
+sudo docker compose run --rm coffee-records python bin/backfill_telemetry_thumbnails.py
 ```
 
-The command skips existing PNGs, reports generated/skipped/failed counts, and exits nonzero if any source file cannot be processed. Pass `--force` to replace existing previews.
+The command skips existing PNGs, reports generated/skipped/failed counts, and exits nonzero if any source file cannot be processed. Pass `--force` to replace existing previews. It's safe to repeat. Thumbnail filenames are derived from the telemetry filename, so no schema change is involved.
+
+---
+
+## Utility scripts
+
+Run these from the project root with `poetry run python bin/<script>.py`. Only `backfill_telemetry_thumbnails.py` is copied into the Docker image.
+
+| Script | Purpose |
+|---|---|
+| `create_tables.py` | Create missing tables and seed shot defaults (see [Database setup](#database-setup)) |
+| `backfill_telemetry_thumbnails.py` | Generate missing telemetry PNG previews; `--force` regenerates all |
+| `import_ocr_data.py` | Import shots and coffees from OCR'd handwritten log sheets (`coffee_roasters.csv`, `coffee_shots.csv`). Options: `--input-dir` (default `import_data/1/files`), `--coffees-file`, `--shots-file`, `--settings` (default `ocr_import.yaml`), `--year`, `--dry-run`, `--verbose` |
+| `edit_telemetry.py` | Plot and edit a Beanconqueror telemetry JSON file: trim with `--start-time`/`--end-time`, boxcar-smooth with `--weight`/`--flow`/`--pressure N`, and name the output after a shot with `--shot-id`. Writes `<input>_edited.json` and never touches the database. |
+| `repair_duplicate_coffees.py` | One-off: merge the known duplicate coffees created by the OCR import, moving their shots to the lower-ID coffee. Dry run by default; `--apply` writes. |
+
+Always run `import_ocr_data.py` with `--dry-run` first.
 
 ---
 
@@ -208,6 +240,8 @@ npx tsc -b --noEmit
 npx eslint .
 npm test                                     # Vitest unit tests
 ```
+
+CI (`.github/workflows/ci.yml`) runs these same checks on every pull request and every push to `main`. On the backend it runs black as `black --check coffee_records bin test`. Treat any failure as blocking.
 
 Tests use an in-memory SQLite database — no PostgreSQL required. The Brewmeo import tests use a trimmed sample export in `test/fixtures/brewmeo_shot.csv`, because `import_data/` is gitignored.
 
@@ -235,12 +269,23 @@ The default view. Lists the most recent 50 shots, newest first. Each card shows:
 - Video link icon (if a video was attached)
 - A compact telemetry chart thumbnail when telemetry is attached; click it to open the interactive chart modal
 - A telemetry icon fallback when a legacy or missing thumbnail cannot be loaded
+- A pencil icon that opens the shot in [Edit Shot](#edit-shot)
 
 Filter the list by maker using the dropdown at the top. **Import CSV** starts a new shot from a Brewmeo export (see [Importing a Brewmeo CSV](#importing-a-brewmeo-csv)).
 
+![Shots list with coffee thumbnails, telemetry previews, prep badges and grind/temperature panels](docs/screenshots/shots.png)
+
+Clicking a telemetry preview opens the full interactive chart of flow, pressure and weight:
+
+![Shot telemetry modal showing flow, pressure and weight over time](docs/screenshots/telemetry.png)
+
 ### New Shot
 
-Form to log a shot. All fields except date and maker are optional. The form opens pre-filled with sensible defaults so only changed values need to be entered.
+Form to log a shot. All fields except date and maker are optional. The form opens pre-filled with defaults, so you only enter what changed.
+
+![New Shot form after 9:30 am: Maker is Sara, so the drink defaults to cappuccino, and the grind setting is filled from the coffee's last shot](docs/screenshots/new-shot.png)
+
+The dose, weights, times, temperature, drink and prep-toggle defaults below are first-run seed values from `config.yaml`'s `shot_defaults_seed`. After that, the form uses whatever is saved on the [Defaults](#defaults) page.
 
 | Field | Default | Notes |
 |---|---|---|
@@ -293,11 +338,17 @@ The `moment` rows are converted to Beanconqueror-style telemetry JSON and attach
 
 A sudden jump of more than 5 g within 0.25 s in the last 20% of the shot is treated as the cup being bumped or lifted, and is trimmed from the weight trace. The form then warns if the CSV's final weight disagrees with the scale trace.
 
+### Edit Shot
+
+The pencil icon on a shot card opens the same form as New Shot, filled with that shot's saved values instead of the defaults. **Save Changes** updates the shot. From here you can also replace or remove the shot's video and telemetry; those changes apply when you save. The UI has no way to delete a shot; use `DELETE /api/shots/<id>`.
+
 ### Coffees
 
 Manage the catalogue of coffee bags. Each entry stores name, roaster, roast date, roast level, origin country, variety, and process. A coffee label photo can be uploaded directly from the table — a 40×40 thumbnail is shown inline; clicking it opens a centered modal viewer (scales to 90 vw / 600 px max, 80 vh max height) that works on both desktop and mobile. Photos are served from `https://resources.drskippy.app/coffee/<filename>`.
 
 Coffees referenced by shots cannot be deleted (returns a conflict error).
+
+![Coffees catalogue with label photo thumbnails, roaster, roast date, roast level and origin](docs/screenshots/coffees.png)
 
 ### Equipment
 
@@ -332,6 +383,8 @@ Features that do not vary within any single coffee group (e.g. temperature alway
 
 The **Retrain Model** button triggers a fresh training run and immediately refreshes all plots.
 
+![Shot Planner with a recommended grind, the fitted model equation, and the three plots](docs/screenshots/planner.png)
+
 Training uses only americano, latte, and cappuccino shots. Drip and aeropress shots are excluded, as are the first day of shots for each coffee bag (dialing-in shots). Shots pulled with shot profiling (**Flow Taper** checked) are also excluded, since a profiled flow curve changes the grind/extraction relationship; only shots explicitly marked not profiled are used (the rule lives in `coffee_records/services/grind_model/eligibility.py`). Each coffee's dialing-in day is still taken from all of its shots. Every training run logs its candidate, eligible and excluded counts.
 
 ### API
@@ -352,6 +405,8 @@ Grinders are not a dropdown filter — instead, each grinder with more than 3 sh
 | Dose vs Yield (g) | Multi-line | Dose and yield weight per shot; dose/yield pair per brewing device |
 
 Grinders with 3 or fewer shots in the selected range are silently omitted.
+
+![Reports page: one grinder panel with shots per day, extraction time, dose:yield ratio and dose vs yield](docs/screenshots/reports.png)
 
 ### Defaults
 
@@ -421,7 +476,7 @@ Requests without a valid key return `401 Unauthorized`. Authentication is disabl
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/shots` | List shots (newest first, max 50 by default) |
+| `GET` | `/api/shots` | List shots (newest first; all shots unless `limit` is given. The Shots page requests 50) |
 | `POST` | `/api/shots` | Create a shot |
 | `GET` | `/api/shots/makers` | Distinct maker names from all shots, sorted |
 | `GET` | `/api/shots/last-grind?coffee_id=&grinder_id=` | Most recent grind setting recorded for a coffee (optionally on one grinder); all-null fields for a coffee's first shot. Used to default the New Shot grind setting. |
@@ -473,6 +528,7 @@ Telemetry upload returns `422` when the JSON is malformed or contains no usable 
   "shaker": true,
   "wdt": true,
   "flow_taper": false,
+  "grind_setting": "8+7 1/2",
   "notes": "Dialed in well",
   "video_filename": "e5f6a7b8.mp4",
   "telemetry_filename": "f6a7b8c9.json",
@@ -548,7 +604,7 @@ All report endpoints accept optional query parameters: `date_from`, `date_to` (I
 
 ### Grind Model
 
-A multivariate per-grinder model fitted with a within-group (fixed effects) estimator over all espresso shot history. Requires the `grind_model_trainings` and `grind_model_coffee_intercepts` tables (created by `bin/migrate_grind_model.py`).
+A multivariate per-grinder model fitted with a within-group (fixed effects) estimator over all espresso shot history. Requires the `grind_model_trainings` and `grind_model_coffee_intercepts` tables (created by `bin/create_tables.py`).
 
 | Method | Path | Description |
 |---|---|---|
