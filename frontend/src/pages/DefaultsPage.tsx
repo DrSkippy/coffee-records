@@ -14,6 +14,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { useEffect, useState } from "react";
 import { getDefaults, updateDefaults } from "../api/defaults";
+import { MAKER_DRINK_DEFAULTS } from "../utils/drinks";
 
 interface FormValues {
   maker: string;
@@ -127,11 +128,23 @@ export default function DefaultsPage() {
           <Grid.Col span={{ base: 12, sm: 6 }}>
             <Select
               label="Drink Type"
+              description="Default for Scott and other makers"
               data={["americano", "latte", "cappuccino", "drip"]}
               clearable
               {...form.getInputProps("drink_type")}
             />
           </Grid.Col>
+          {Object.entries(MAKER_DRINK_DEFAULTS).map(([maker, drink]) => (
+            <Grid.Col key={maker} span={{ base: 12, sm: 6 }}>
+              <TextInput
+                label={`Drink Type for ${maker}`}
+                value={drink}
+                description="Set automatically on the New Shot form"
+                readOnly
+                variant="filled"
+              />
+            </Grid.Col>
+          ))}
           <Grid.Col span={{ base: 12, sm: 6 }}>
             <NumberInput
               label="Dose (g)"

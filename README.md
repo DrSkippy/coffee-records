@@ -206,6 +206,7 @@ poetry run mypy coffee_records bin test      # strict mode, set in pyproject.tom
 cd frontend
 npx tsc -b --noEmit
 npx eslint .
+npm test                                     # Vitest unit tests
 ```
 
 Tests use an in-memory SQLite database — no PostgreSQL required. The Brewmeo import tests use a trimmed sample export in `test/fixtures/brewmeo_shot.csv`, because `import_data/` is gitignored.
@@ -246,7 +247,8 @@ Form to log a shot. All fields except date and maker are optional. The form open
 | Date | Today | |
 | Maker | Scott before 9:30 am, Sara from 9:30 am | Dropdown of Scott, Sara and anyone who has logged a shot; type a new name and pick **Add “…”** to add someone |
 | Coffee | Most recently entered | Searchable select from the coffees list |
-| Drink type | americano | americano / latte / cappuccino / drip / aeropress |
+| Drink type | cappuccino when Maker is Sara; otherwise the Defaults page value (americano) | Follows the Maker until you pick a drink; a drink you chose is never overwritten. The rule lives in `frontend/src/utils/drinks.ts` |
+| Grind setting | Last grind recorded for the chosen coffee on the chosen grinder; empty for a coffee's first shot | Refills when the coffee or grinder changes until you type a value; shows the date it was last used |
 | Grinder | Option-O (matched by name) | Searchable select |
 | Machine | ECM Synchronika (matched by name) | Searchable select |
 | Scale | Bookoo (matched by name) | Searchable select |
@@ -355,7 +357,7 @@ Grinders with 3 or fewer shots in the selected range are silently omitted.
 
 Editable defaults for the New Shot form. Any value saved here pre-fills the corresponding field when opening a new shot, so only changed values need to be entered.
 
-Fields: dose weight, pre-infusion time, extraction time, final weight, drink type, grinder temp before, and the four prep technique toggles (Wedge, Shaker, WDT, Flow Taper). Maker isn't set here: the New Shot form picks Scott before 9:30 am and Sara after.
+Fields: dose weight, pre-infusion time, extraction time, final weight, drink type, grinder temp before, and the four prep technique toggles (Wedge, Shaker, WDT, Flow Taper). Maker isn't set here: the New Shot form picks Scott before 9:30 am and Sara after. The drink type saved here applies to Scott and other makers; Sara's shots start as cappuccino (shown read-only on the page).
 
 ---
 
