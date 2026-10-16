@@ -26,10 +26,12 @@ from coffee_records.schemas.grind_model import (
     GrindModelTrainingResponse,
     TargetTimeItem,
 )
+from coffee_records.services.grind_model.eligibility import split_by_profiling
 from coffee_records.services.grind_model.estimator import fit_within_coffee
 from coffee_records.services.grind_model.features import (
     COEFFICIENT_NAMES,
     build_feature_rows,
+    first_date_per_coffee,
     load_eligible_shots,
 )
 from coffee_records.services.grind_notation import format_grind_numeric
@@ -171,7 +173,12 @@ def fit_grind_model(
     each coffee's intercept ``c`` is its mean residual. Features with too
     little within-coffee variation are held at 0 (see fit_within_coffee).
 
-    Each coffee's first day of shots (dialing in) is excluded.
+    Each coffee's first day of shots (dialing in) is excluded, and so are
+    shots pulled with shot profiling (see grind_model.eligibility). The
+    profiling filter is applied after the dialing-in day is determined from
+    all of the coffee's shots, and the eligible/excluded counts are logged.
+    ``n_shots_available`` counts every candidate shot, including profiled
+    ones, so ``n_shots_used`` reflects all exclusions.
 
     Persists the result to grind_model_trainings + grind_model_coffee_intercepts.
 
@@ -193,7 +200,19 @@ def fit_grind_model(
     shots = load_eligible_shots(session, grinder_id, params)
     coffee_ids = {s.coffee_id for s in shots if s.coffee_id is not None}
     target_times = target_shot_times_wma(session, coffee_ids, grinder_id, params)
-    rows = build_feature_rows(shots, target_times, params)
+    split = split_by_profiling(shots)
+    logger.info(
+        "fit_grind_model: grinder_id=%d — %d candidate shots: %d eligible,"
+        " %d excluded as profiled, %d excluded with unknown profiling flag",
+        grinder_id,
+        len(shots),
+        len(split.eligible),
+        len(split.profiled),
+        len(split.unknown),
+    )
+    rows = build_feature_rows(
+        split.eligible, target_times, params, first_date_per_coffee(shots)
+    )
     if len(rows) < params.min_points:
         raise InsufficientDataError(
             f"fewer than {params.min_points} usable shots after filtering"
@@ -317,11 +336,15 @@ def get_grind_model_params(
     }
     target_times = target_shot_times_wma(session, intercepts, grinder_id, params)
 
-    # Re-query shots for plotting (all current qualifying shots for coffees in model)
+    # Re-query shots for plotting (all current qualifying shots for coffees in
+    # model), with the same profiling filter as training.
     shots = load_eligible_shots(session, grinder_id, params, coffee_ids=intercepts)
+    eligible = split_by_profiling(shots).eligible
     coefficients = [float(getattr(training, name)) for name in COEFFICIENT_NAMES]
     points = []
-    for row in build_feature_rows(shots, target_times, params):
+    for row in build_feature_rows(
+        eligible, target_times, params, first_date_per_coffee(shots)
+    ):
         predicted = (
             sum(a * x for a, x in zip(coefficients, row.features))
             + intercepts[row.coffee_id]

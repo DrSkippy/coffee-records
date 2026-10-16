@@ -332,7 +332,7 @@ Features that do not vary within any single coffee group (e.g. temperature alway
 
 The **Retrain Model** button triggers a fresh training run and immediately refreshes all plots.
 
-Training uses only americano, latte, and cappuccino shots. Drip and aeropress shots are excluded, as are the first day of shots for each coffee bag (dialing-in shots).
+Training uses only americano, latte, and cappuccino shots. Drip and aeropress shots are excluded, as are the first day of shots for each coffee bag (dialing-in shots). Shots pulled with shot profiling (**Flow Taper** checked) are also excluded, since a profiled flow curve changes the grind/extraction relationship; only shots explicitly marked not profiled are used (the rule lives in `coffee_records/services/grind_model/eligibility.py`). Each coffee's dialing-in day is still taken from all of its shots. Every training run logs its candidate, eligible and excluded counts.
 
 ### API
 
@@ -555,7 +555,7 @@ A multivariate per-grinder model fitted with a within-group (fixed effects) esti
 | `POST` | `/api/reports/grind-model/train` | Fit or re-fit the model for a grinder. Returns 201 with the training record. `grinder_id` required. |
 | `GET` | `/api/reports/grind-model/params` | Retrieve model parameters, per-coffee intercepts, target shot times, and data points for plotting. `grinder_id` required. Optional: `training_id` (specific run) or `as_of` (ISO date — latest training on or before that date). |
 
-**`/train` response** includes `training_id`, all coefficients (`a0`, `a2`–`a5`), `coffee_intercepts`, `r_squared`, `n_shots_used`, `n_shots_available`, `converged`, and `n_iterations`.
+**`/train` response** includes `training_id`, all coefficients (`a0`, `a2`–`a5`), `coffee_intercepts`, `r_squared`, `n_shots_used`, `n_shots_available`, `converged`, and `n_iterations`. `n_shots_available` counts every candidate shot for the grinder, including profiled ones, so `n_shots_used` reflects all exclusions.
 
 **`/params` response** extends the training record with `points` (per-shot actual vs predicted grind for plotting) and `target_times` (per-coffee WMA target shot time).
 

@@ -105,6 +105,7 @@ def build_feature_rows(
     shots: list[Shot],
     target_times: Mapping[int, float | None],
     params: GrindModelConfig,
+    first_dates: Mapping[int, date] | None = None,
 ) -> list[FeatureRow]:
     """Project eligible shots into feature rows.
 
@@ -112,14 +113,19 @@ def build_feature_rows(
     settings, and coffees without a target shot time.
 
     Args:
-        shots: Output of load_eligible_shots.
+        shots: Shots to project (e.g. load_eligible_shots after the
+            profiling filter).
         target_times: Target shot time per coffee id.
         params: Reference values used to center the features.
+        first_dates: Each coffee's dialing-in day. Pass it when ``shots`` is
+            a filtered subset so the first day still reflects every shot of
+            the coffee; defaults to the earliest date within ``shots``.
 
     Returns:
         Usable feature rows, in input order.
     """
-    first_dates = first_date_per_coffee(shots)
+    if first_dates is None:
+        first_dates = first_date_per_coffee(shots)
     rows: list[FeatureRow] = []
     for shot in shots:
         cid = shot.coffee_id
