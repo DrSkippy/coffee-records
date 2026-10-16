@@ -33,6 +33,7 @@ import {
   uploadShotVideo,
 } from "../api/shots";
 import MakerSelect from "../components/shots/MakerSelect";
+import { nextDrinkValue } from "../utils/drinks";
 import { defaultMakerAt } from "../utils/makers";
 import type {
   BrewingDevice,
@@ -112,6 +113,8 @@ export default function NewShotPage() {
       : null
   );
   const [sliderPosition, setSliderPosition] = useState(0);
+  // Stored drink default from the Defaults page; null until loaded.
+  const [storedDrink, setStoredDrink] = useState<string | null>(null);
 
   useEffect(() => {
     getMakers().then(setMakers);
@@ -121,6 +124,7 @@ export default function NewShotPage() {
         setGrinders(g);
         setDevices(d);
         setScales(s);
+        setStoredDrink(defaults.drink_type ?? "");
 
         form.setValues({
           maker: defaultMakerAt(new Date()),
@@ -128,7 +132,6 @@ export default function NewShotPage() {
           pre_infusion_time: defaults.pre_infusion_time ?? "",
           extraction_time: defaults.extraction_time ?? "",
           final_weight: defaults.final_weight ?? "",
-          drink_type: defaults.drink_type ?? "",
           grinder_temp_before: defaults.grinder_temp_before ?? "",
           wedge: defaults.wedge,
           shaker: defaults.shaker,
@@ -247,6 +250,26 @@ export default function NewShotPage() {
   const handleGrindChange = (event: ChangeEvent<HTMLInputElement>) => {
     grindEdited.current = true;
     grindInputProps.onChange(event);
+  };
+
+  // Drink type follows the maker (Sara → cappuccino, others → the stored
+  // default) until the user picks a drink; a chosen drink is never overwritten.
+  const drinkChosen = useRef(false);
+  const { maker } = form.values;
+
+  useEffect(() => {
+    if (storedDrink === null) return;
+    form.setFieldValue(
+      "drink_type",
+      nextDrinkValue(maker, storedDrink, form.values.drink_type, drinkChosen.current)
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-run only when the maker or stored default changes; Mantine's form object isn't referentially stable
+  }, [maker, storedDrink]);
+
+  const drinkInputProps = form.getInputProps("drink_type");
+  const handleDrinkChange = (value: string | null) => {
+    drinkChosen.current = true;
+    drinkInputProps.onChange(value ?? "");
   };
 
   const applyCsvImport = ({ fields, new_coffee, notes }: ShotCsvImport) => {
@@ -397,7 +420,8 @@ export default function NewShotPage() {
               label="Drink Type"
               data={["americano", "latte", "cappuccino", "drip"]}
               clearable
-              {...form.getInputProps("drink_type")}
+              {...drinkInputProps}
+              onChange={handleDrinkChange}
             />
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 6 }}>
