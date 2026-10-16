@@ -1,4 +1,10 @@
 export POSTGRES_USER=your_user
 export POSTGRES_PASSWORD=your_password
 export POSTGRES_HOST=192.168.1.91
+export POSTGRES_PORT=5434
 export POSTGRES_DATABASE=coffee-records
+# Flask secret; required unless app.debug is true. Generate with:
+#   python -c "import secrets; print(secrets.token_hex(32))"
+export SECRET_KEY=change-me
+# Optional: when set, /api/* requires an X-API-Key header with this value
+export API_KEY=

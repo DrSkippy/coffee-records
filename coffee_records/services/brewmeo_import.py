@@ -12,6 +12,7 @@ import io
 import json
 import math
 import re
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
@@ -19,11 +20,13 @@ from typing import Any
 import numpy as np
 from sqlalchemy.orm import Session
 
+from coffee_records.config import BrewmeoConfig, MatchingConfig
 from coffee_records.models.coffee import Coffee, RoastLevel
 from coffee_records.models.equipment import BrewingDevice, Grinder
 from coffee_records.schemas.coffee import CoffeeCreate
 from coffee_records.schemas.shot import ShotCsvImportFields, ShotCsvImportResponse
-from coffee_records.services.matching import best_equipment_match, fuzzy_match
+from coffee_records.services.brew_time import format_brew_time
+from coffee_records.services.matching import best_equipment_match, is_same_beans
 from coffee_records.services.telemetry import (
     TelemetryValidationError,
     extract_thumbnail_series,
@@ -82,13 +85,11 @@ _UNIT_DISPLAY = {
     "number in range 1 .. 10": "/10",
 }
 
-_FLOW_SMOOTHING_TENTHS = 5
-_FLOW_HALF_WINDOW_TENTHS = 5
-# A weight jump this large this fast is a bumped or lifted cup, not espresso.
-_DISTURBANCE_GRAMS = 5.0
-_DISTURBANCE_SECONDS = 0.25
-_DISTURBANCE_TAIL_FRACTION = 0.2
-_FINAL_WEIGHT_TOLERANCE_GRAMS = 2.0
+# Flow is derived on a fixed 0.1 s grid (Beanconqueror's brew_time resolution).
+_GRID_STEPS_PER_SECOND = 10
+_GRID_STEP_MS = 1000 // _GRID_STEPS_PER_SECOND
+# Clock origin for telemetry timestamps when the CSV carries no shot date.
+_FALLBACK_START = datetime(2000, 1, 1)
 
 
 class BrewmeoImportError(ValueError):
@@ -191,53 +192,46 @@ def parse_brewmeo_csv(text: str) -> BrewmeoShot:
     return shot
 
 
-def format_brew_time(elapsed: float) -> str:
-    """Format seconds as Beanconqueror ``S.T`` brew time (T = tenths).
-
-    Args:
-        elapsed: Seconds since the start of the shot.
-
-    Returns:
-        E.g. ``37.908`` -> ``"37.9"``, ``0.96`` -> ``"1.0"``.
-    """
-    tenths = round(elapsed * 10)
-    return f"{tenths // 10}.{tenths % 10}"
-
-
 def _clock(start: datetime, elapsed: float) -> str:
     return (start + timedelta(seconds=elapsed)).strftime("%H:%M:%S.%f")[:-3]
 
 
-def trim_weight_disturbance(weight: list[Sample]) -> tuple[list[Sample], float | None]:
+def trim_weight_disturbance(
+    weight: list[Sample], settings: BrewmeoConfig | None = None
+) -> tuple[list[Sample], float | None]:
     """Drop a scale disturbance at the end of the weight trace.
 
-    Looks for the first jump of more than ``_DISTURBANCE_GRAMS`` within
-    ``_DISTURBANCE_SECONDS`` in the last ``_DISTURBANCE_TAIL_FRACTION`` of the
+    Looks for the first jump of more than ``disturbance_grams`` within
+    ``disturbance_seconds`` in the last ``disturbance_tail_fraction`` of the
     shot (e.g. the cup lifted or bumped as the shot ends) and removes that
     sample and everything after it. Earlier samples are never touched.
 
     Args:
         weight: ``(elapsed_s, grams)`` samples sorted by time.
+        settings: Disturbance thresholds (defaults to built-in settings).
 
     Returns:
         The kept samples and the elapsed time where trimming began, or the
         original samples and None when no disturbance was found.
     """
+    settings = settings or BrewmeoConfig()
     if len(weight) < 2:
         return weight, None
-    tail_start = weight[-1][0] * (1 - _DISTURBANCE_TAIL_FRACTION)
+    tail_start = weight[-1][0] * (1 - settings.disturbance_tail_fraction)
     for i in range(1, len(weight)):
         (t0, w0), (t1, w1) = weight[i - 1], weight[i]
         if (
             t1 >= tail_start
-            and abs(w1 - w0) > _DISTURBANCE_GRAMS
-            and t1 - t0 <= _DISTURBANCE_SECONDS
+            and abs(w1 - w0) > settings.disturbance_grams
+            and t1 - t0 <= settings.disturbance_seconds
         ):
             return weight[:i], t1
     return weight, None
 
 
-def derive_flow(weight: list[Sample]) -> list[tuple[float, float, float]]:
+def derive_flow(
+    weight: list[Sample], settings: BrewmeoConfig | None = None
+) -> list[tuple[float, float, float]]:
     """Derive a flow-rate series (g/s) from weight samples.
 
     Weight is interpolated onto a 0.1 s grid, smoothed with a centered moving
@@ -246,98 +240,113 @@ def derive_flow(weight: list[Sample]) -> list[tuple[float, float, float]]:
 
     Args:
         weight: ``(elapsed_s, grams)`` samples sorted by time.
+        settings: Smoothing windows (defaults to built-in settings).
 
     Returns:
         ``(elapsed_s, smoothed_grams, flow_g_per_s)`` per 0.1 s step.
     """
+    settings = settings or BrewmeoConfig()
     if len(weight) < 2:
         return []
     times = np.array([t for t, _ in weight])
     grams = np.array([w for _, w in weight])
-    grid = np.arange(0, round(float(times[-1]) * 10) + 1) / 10
+    steps = round(float(times[-1]) * _GRID_STEPS_PER_SECOND)
+    grid = np.arange(0, steps + 1) / _GRID_STEPS_PER_SECOND
     if len(grid) < 2:
         return []
     resampled = np.interp(grid, times, grams)
-    pad = _FLOW_SMOOTHING_TENTHS // 2
-    kernel = np.ones(_FLOW_SMOOTHING_TENTHS) / _FLOW_SMOOTHING_TENTHS
-    smoothed = np.convolve(np.pad(resampled, pad, mode="edge"), kernel, "valid")
+    window = settings.flow_smoothing_tenths
+    kernel = np.ones(window) / window
+    smoothed = np.convolve(np.pad(resampled, window // 2, mode="edge"), kernel, "valid")
 
+    half_window = settings.flow_half_window_tenths
     last = len(grid) - 1
     result: list[tuple[float, float, float]] = []
     for i, t in enumerate(grid):
-        lo = max(i - _FLOW_HALF_WINDOW_TENTHS, 0)
-        hi = min(i + _FLOW_HALF_WINDOW_TENTHS, last)
+        lo = max(i - half_window, 0)
+        hi = min(i + half_window, last)
         flow = (smoothed[hi] - smoothed[lo]) / (grid[hi] - grid[lo])
         result.append((float(t), float(smoothed[i]), max(float(flow), 0.0)))
     return result
 
 
-def to_telemetry_json(shot: BrewmeoShot, source_file: str) -> dict[str, Any]:
+def _with_previous(samples: list[Sample]) -> Iterator[tuple[float, float, float]]:
+    """Yield ``(elapsed, value, previous_value)``, with 0.0 before the first sample.
+
+    Args:
+        samples: ``(elapsed_s, value)`` samples sorted by time.
+
+    Yields:
+        Each sample alongside the preceding sample's value.
+    """
+    previous = 0.0
+    for elapsed, value in samples:
+        yield elapsed, value, previous
+        previous = value
+
+
+def _time_fields(start: datetime, elapsed: float) -> dict[str, str]:
+    """Return Beanconqueror's ``timestamp`` and ``brew_time`` fields.
+
+    Args:
+        start: Wall-clock time of the shot start.
+        elapsed: Seconds since the start of the shot.
+
+    Returns:
+        The two timing fields for one telemetry entry.
+    """
+    return {"timestamp": _clock(start, elapsed), "brew_time": format_brew_time(elapsed)}
+
+
+def to_telemetry_json(
+    shot: BrewmeoShot, source_file: str, settings: BrewmeoConfig | None = None
+) -> dict[str, Any]:
     """Convert parsed samples to Beanconqueror flow-profile JSON plus metadata.
 
     Args:
         shot: Parsed CSV.
         source_file: Original upload filename, recorded in the metadata.
+        settings: Signal-processing settings (defaults to built-in settings).
 
     Returns:
         A JSON-serializable dict with the Beanconqueror series keys and a
         ``metadata`` object describing the shot and its source.
     """
     shot_date = shot.when("Date")
-    start = shot_date or datetime(2000, 1, 1)
-    weight, trimmed_from = trim_weight_disturbance(shot.weight)
+    start = shot_date or _FALLBACK_START
+    weight, trimmed_from = trim_weight_disturbance(shot.weight, settings)
 
-    weight_entries: list[dict[str, Any]] = []
-    previous = 0.0
-    for elapsed, grams in weight:
-        weight_entries.append(
-            {
-                "timestamp": _clock(start, elapsed),
-                "brew_time": format_brew_time(elapsed),
-                "actual_weight": grams,
-                "old_weight": previous,
-                "actual_smoothed_weight": grams,
-                "old_smoothed_weight": previous,
-                "not_mutated_weight": grams,
-            }
-        )
-        previous = grams
-
-    pressure_entries: list[dict[str, Any]] = []
-    previous = 0.0
-    for elapsed, bar in shot.pressure:
-        pressure_entries.append(
-            {
-                "timestamp": _clock(start, elapsed),
-                "brew_time": format_brew_time(elapsed),
-                "actual_pressure": bar,
-                "old_pressure": previous,
-            }
-        )
-        previous = bar
-
-    temperature_entries: list[dict[str, Any]] = []
-    previous = 0.0
-    for elapsed, celsius in shot.temperature:
-        temperature_entries.append(
-            {
-                "timestamp": _clock(start, elapsed),
-                "brew_time": format_brew_time(elapsed),
-                "actual_temperature": celsius,
-                "old_temperature": previous,
-            }
-        )
-        previous = celsius
-
+    weight_entries = [
+        {
+            **_time_fields(start, elapsed),
+            "actual_weight": grams,
+            "old_weight": previous,
+            "actual_smoothed_weight": grams,
+            "old_smoothed_weight": previous,
+            "not_mutated_weight": grams,
+        }
+        for elapsed, grams, previous in _with_previous(weight)
+    ]
+    pressure_entries = [
+        {**_time_fields(start, elapsed), "actual_pressure": bar, "old_pressure": prev}
+        for elapsed, bar, prev in _with_previous(shot.pressure)
+    ]
+    temperature_entries = [
+        {
+            **_time_fields(start, elapsed),
+            "actual_temperature": celsius,
+            "old_temperature": previous,
+        }
+        for elapsed, celsius, previous in _with_previous(shot.temperature)
+    ]
     flow_entries = [
         {
-            "brew_time": format_brew_time(elapsed),
-            "timestamp": _clock(start, elapsed),
+            **_time_fields(start, elapsed),
             "smoothed_weight": round(smoothed, 3),
-            "timestampdelta": 100,
+            "timestampdelta": _GRID_STEP_MS,
             "flow_value": round(flow, 3),
         }
-        for elapsed, smoothed, flow in derive_flow(weight)
+        for elapsed, smoothed, flow in derive_flow(weight, settings)
     ]
 
     return {
@@ -416,14 +425,37 @@ def compose_notes(shot: BrewmeoShot, consumed: set[str]) -> str:
     return "\n".join(lines)
 
 
+def _roast_level(text: str | None) -> RoastLevel | None:
+    """Map a Brewmeo roast color to a RoastLevel.
+
+    Args:
+        text: Roast color label, any case.
+
+    Returns:
+        The matching RoastLevel, or None if unrecognised.
+    """
+    try:
+        return RoastLevel((text or "").lower())
+    except ValueError:
+        return None
+
+
 def _match_coffee(
-    session: Session, shot: BrewmeoShot
+    session: Session, shot: BrewmeoShot, matching: MatchingConfig | None = None
 ) -> tuple[int | None, CoffeeCreate | None, list[str]]:
     """Match the CSV beans to a coffee, or propose a new one.
 
     A match requires fuzzy name and roaster agreement plus the same roast
     date. A name/roaster match with a different roast date is treated as a
     new bag; its origin and process are carried over to the proposal.
+
+    Args:
+        session: Read-only database session.
+        shot: Parsed CSV.
+        matching: Fuzzy-match thresholds.
+
+    Returns:
+        ``(existing coffee id, proposed new coffee, warnings)``.
     """
     name = shot.text("Beans")
     roaster = shot.text("Roastery")
@@ -435,8 +467,7 @@ def _match_coffee(
     same_beans = [
         c
         for c in session.query(Coffee).all()
-        if fuzzy_match(name, c.name or "", threshold=0.8)
-        and (not roaster or fuzzy_match(roaster, c.roaster or "", threshold=0.5))
+        if is_same_beans(name, roaster, c.name or "", c.roaster or "", matching)
     ]
     if roast_date is not None:
         exact = [c for c in same_beans if c.roast_date == roast_date]
@@ -445,16 +476,12 @@ def _match_coffee(
     if exact:
         return exact[0].id, None, []
 
-    level_text = (shot.text("Roast Color") or "").lower()
-    roast_level = (
-        RoastLevel(level_text) if level_text in RoastLevel._value2member_map_ else None
-    )
     previous_bag = max(same_beans, key=lambda c: c.roast_date or date.min, default=None)
     proposal = CoffeeCreate(
         name=name,
         roaster=roaster or "Unknown",
         roast_date=roast_date,
-        roast_level=roast_level,
+        roast_level=_roast_level(shot.text("Roast Color")),
         variety=shot.text("Variety"),
         origin_country=previous_bag.origin_country if previous_bag else None,
         process=previous_bag.process if previous_bag else None,
@@ -479,7 +506,11 @@ def _safe_filename(name: str | None) -> str:
 
 
 def build_import(
-    session: Session, shot: BrewmeoShot, source_file: str
+    session: Session,
+    shot: BrewmeoShot,
+    source_file: str,
+    brewmeo: BrewmeoConfig | None = None,
+    matching: MatchingConfig | None = None,
 ) -> ShotCsvImportResponse:
     """Map a parsed CSV onto shot form values, coffee, equipment and notes.
 
@@ -487,20 +518,25 @@ def build_import(
         session: Read-only database session used for matching.
         shot: Parsed CSV.
         source_file: Original upload filename.
+        brewmeo: Signal-processing settings (defaults to built-in settings).
+        matching: Fuzzy-match thresholds (defaults to built-in settings).
 
     Returns:
         The import response; nothing is written to the database.
     """
+    brewmeo = brewmeo or BrewmeoConfig()
+    matching = matching or MatchingConfig()
     warnings: list[str] = []
     consumed = set(_SHOT_LABELS | _COFFEE_LABELS)
 
-    coffee_id, new_coffee, coffee_warnings = _match_coffee(session, shot)
+    coffee_id, new_coffee, coffee_warnings = _match_coffee(session, shot, matching)
     warnings.extend(coffee_warnings)
 
     grinder_label = _equipment_label(shot, _GRINDER_LABELS)
     grinder_id = best_equipment_match(
         grinder_label,
         ((g.id, f"{g.make} {g.model}") for g in session.query(Grinder).all()),
+        min_overlap=matching.equipment_min_overlap,
     )
     if grinder_id is not None:
         consumed.update(_GRINDER_LABELS)
@@ -511,6 +547,7 @@ def build_import(
     device_id = best_equipment_match(
         machine_label,
         ((d.id, f"{d.make} {d.model}") for d in session.query(BrewingDevice).all()),
+        min_overlap=matching.equipment_min_overlap,
     )
     if device_id is not None:
         consumed.update(_MACHINE_LABELS)
@@ -518,14 +555,14 @@ def build_import(
         warnings.append(f"Machine '{machine_label}' not found; left unselected")
 
     final_weight = shot.positive("Weight")
-    kept, trimmed_from = trim_weight_disturbance(shot.weight)
+    kept, trimmed_from = trim_weight_disturbance(shot.weight, brewmeo)
     if trimmed_from is not None:
         warnings.append(
             f"Scale disturbance at {trimmed_from:.1f} s removed from the weight trace"
         )
     if kept and final_weight is not None:
         trace_final = kept[-1][1]
-        if abs(final_weight - trace_final) > _FINAL_WEIGHT_TOLERANCE_GRAMS:
+        if abs(final_weight - trace_final) > brewmeo.final_weight_tolerance_grams:
             warnings.append(
                 f"CSV final weight {final_weight:.1f} g disagrees with the scale "
                 f"trace ({trace_final:.1f} g at the end of the shot); check Final Weight"
@@ -547,7 +584,7 @@ def build_import(
         device_id=device_id,
     )
 
-    telemetry: dict[str, Any] | None = to_telemetry_json(shot, source_file)
+    telemetry: dict[str, Any] | None = to_telemetry_json(shot, source_file, brewmeo)
     try:
         extract_thumbnail_series(json.dumps(telemetry).encode())
     except TelemetryValidationError as exc:

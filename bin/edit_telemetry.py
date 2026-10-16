@@ -16,11 +16,19 @@ import argparse
 import json
 import logging
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import matplotlib.pyplot as plt
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from coffee_records.services.brew_time import (  # noqa: E402
+    format_brew_time,
+    parse_brew_time,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -54,12 +62,14 @@ def get_brew_time(item: dict[str, Any]) -> float:
     The decimal part is tenths of a second (not a decimal fraction), so
     '0.10' means 1.0 s, not 0.1 s. float() gives the wrong answer for
     any value with two or more digits after the dot.
+
+    Args:
+        item: Telemetry sample with a ``brew_time`` field.
+
+    Returns:
+        Elapsed seconds.
     """
-    s = str(item["brew_time"])
-    if "." in s:
-        int_part, frac_part = s.split(".", 1)
-        return int(int_part) + int(frac_part) / 10.0
-    return float(s)
+    return parse_brew_time(item["brew_time"])
 
 
 def set_brew_time(item: dict[str, Any], value: float) -> None:
@@ -67,15 +77,16 @@ def set_brew_time(item: dict[str, Any], value: float) -> None:
 
     Items whose brew_time had no '.' (e.g. waterFlow uses '0','1',...) keep
     that integer-string format. All others use 'S.T' (tenths digit 0-9).
+
+    Args:
+        item: Telemetry sample to update in place.
+        value: New elapsed seconds.
     """
-    total_tenths = round(value * 10)
-    seconds = total_tenths // 10
-    tenths = total_tenths % 10
-    original = str(item["brew_time"])
-    if "." in original:
-        item["brew_time"] = f"{seconds}.{tenths}"
+    formatted = format_brew_time(value)
+    if "." in str(item["brew_time"]):
+        item["brew_time"] = formatted
     else:
-        item["brew_time"] = str(seconds)
+        item["brew_time"] = formatted.split(".", 1)[0]
 
 
 def trim_series(

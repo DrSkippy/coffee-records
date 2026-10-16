@@ -94,44 +94,61 @@ On the Docker host, port 5000 is taken by the local registry (and 5001 by Dockge
 
 ### `config.yaml`
 
+All non-secret settings, including every model calibration constant, live in
+`config.yaml` and are validated by the Pydantic models in
+`coffee_records/config.py`. Abridged:
+
 ```yaml
 app:
   debug: false
-  secret_key: "changeme"     # change in production
-  api_key: ""                # leave empty to disable auth; set API_KEY env var to enable
-
 database:
-  host: "192.168.1.91"
-  port: 5434
-  name: "coffee-records"
+  host: "192.168.1.91"       # POSTGRES_HOST overrides
+  port: 5434                 # POSTGRES_PORT overrides
+  name: "coffee-records"     # POSTGRES_DATABASE overrides
   pool_size: 5
-
-logging:
+logging:                     # applied via logging.config.dictConfig
   level: "INFO"
-
-server:
+server:                      # read by gunicorn.conf.py
   host: "0.0.0.0"
   port: 5000
   workers: 4
-
 uploads:
-  coffee_image_dir: "/resources"     # container path; mounted from /var/www/html/resources/coffee
-  coffee_image_base_url: "https://resources.drskippy.app/coffee"
+  media_dir: "/resources"    # container path; mounted from /var/www/html/resources/coffee
+reports:
+  default_range_days: 30
+grind_model:                 # reference values the grind model features are centered on
+  reference_temp_f: 65.0
+  reference_dose_g: 20.0
+  target_brew_ratio: 2.0
+  min_within_coffee_range: 0.5
+  min_points: 3
+  espresso_drink_types: [americano, latte, cappuccino]
+grinders:                    # notation family keywords
+  dual_scale_keywords: ["mazzer"]
+  single_number_keywords: ["option-o", "timemore", "baratza"]
+matching: { ... }            # fuzzy-match thresholds for coffees/equipment
+brewmeo: { ... }             # Brewmeo CSV signal-processing calibration
+shot_defaults_seed: { ... }  # initial New Shot form defaults
 ```
+
+`bin/import_ocr_data.py` reads its sheet-specific settings (year, machine
+cutover date, brewer initials, equipment keywords) from `ocr_import.yaml`.
 
 ### Environment variables (`.envrc`)
 
-Required at runtime — never committed to source control:
+Secrets come only from the environment — never from `config.yaml`:
 
 ```bash
 export POSTGRES_USER=youruser
 export POSTGRES_PASSWORD=yourpassword
+export SECRET_KEY=...            # required unless app.debug is true
 ```
 
-Optional overrides (used by `docker-compose.yml`):
+Optional (also passed through by `docker-compose.yml`):
 
 ```bash
 export POSTGRES_HOST=192.168.1.91
+export POSTGRES_PORT=5434
 export POSTGRES_DATABASE=coffee-records
 export API_KEY=your-secret-key   # enforces X-API-Key auth on all /api/* routes
 ```
@@ -182,7 +199,7 @@ The command skips existing PNGs, reports generated/skipped/failed counts, and ex
 ## Running tests and checks
 
 ```bash
-poetry run pytest --cov=coffee_records --cov-report=term-missing test/
+poetry run pytest                            # coverage of coffee_records + bin, gated at 85%
 poetry run black --check .
 poetry run mypy coffee_records bin test      # strict mode, set in pyproject.toml
 
@@ -192,6 +209,11 @@ npx eslint .
 ```
 
 Tests use an in-memory SQLite database — no PostgreSQL required. The Brewmeo import tests use a trimmed sample export in `test/fixtures/brewmeo_shot.csv`, because `import_data/` is gitignored.
+
+`test/test_report_snapshots.py` checks every report endpoint against golden
+outputs in `test/fixtures/report_snapshots.json`. If a change to the models is
+intended, regenerate with `UPDATE_SNAPSHOTS=1 poetry run pytest test/test_report_snapshots.py`
+and review the diff.
 
 ---
 
@@ -345,12 +367,13 @@ All endpoints consume and produce `application/json` unless noted. Full interact
 
 ### Authentication
 
-When the `API_KEY` environment variable is set, every `/api/*` request must include a valid key via one of:
+When the `API_KEY` environment variable is set, every `/api/*` request must include a valid key in a header:
 
 ```
-X-API-Key: <key>          # header
-?api_key=<key>            # query parameter
+X-API-Key: <key>
 ```
+
+Query-string keys are not accepted, so keys never end up in proxy or access logs.
 
 Requests without a valid key return `401 Unauthorized`. Authentication is disabled when `API_KEY` is unset or empty.
 
@@ -399,6 +422,7 @@ Requests without a valid key return `401 Unauthorized`. Authentication is disabl
 | `GET` | `/api/shots` | List shots (newest first, max 50 by default) |
 | `POST` | `/api/shots` | Create a shot |
 | `GET` | `/api/shots/makers` | Distinct maker names from all shots, sorted |
+| `GET` | `/api/shots/last-grind?coffee_id=&grinder_id=` | Most recent grind setting recorded for a coffee (optionally on one grinder); all-null fields for a coffee's first shot. Used to default the New Shot grind setting. |
 | `POST` | `/api/shots/import-csv` | Parse a Brewmeo shot CSV into New Shot form values, a proposed coffee, notes, and telemetry JSON (`multipart/form-data`, field `file`). Writes nothing. |
 | `GET` | `/api/shots/<id>` | Get one shot |
 | `PUT` | `/api/shots/<id>` | Update a shot |

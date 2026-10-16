@@ -20,11 +20,11 @@ from coffee_records.services.brewmeo_import import (
     build_import,
     compose_notes,
     derive_flow,
-    format_brew_time,
     parse_brewmeo_csv,
     to_telemetry_json,
     trim_weight_disturbance,
 )
+from coffee_records.services.brew_time import format_brew_time
 from coffee_records.services.matching import best_equipment_match
 from coffee_records.services.telemetry import (
     extract_thumbnail_series,
@@ -33,11 +33,7 @@ from coffee_records.services.telemetry import (
 )
 
 FIXTURE = Path(__file__).parent / "fixtures" / "brewmeo_shot.csv"
-SAMPLE_JSON = (
-    Path(__file__).parent.parent
-    / "sample_data"
-    / "Beanconqueror_Flowprofile_JSON_08_06_41_20_04_2026.json"
-)
+SAMPLE_JSON = Path(__file__).parent / "fixtures" / "beanconqueror_flow_profile.json"
 
 
 @pytest.fixture()
@@ -305,8 +301,8 @@ def test_imported_telemetry_saves_like_an_upload(
 ) -> None:
     """End to end: import, create shot, upload the returned telemetry."""
     config = client.application.config["APP_CONFIG"]
-    previous_dir = config.uploads.coffee_image_dir
-    config.uploads.coffee_image_dir = str(tmp_path)
+    previous_dir = config.uploads.media_dir
+    config.uploads.media_dir = str(tmp_path)
     try:
         body = client.post(
             "/api/shots/import-csv",
@@ -340,4 +336,4 @@ def test_imported_telemetry_saves_like_an_upload(
         thumbnail = telemetry_dir / saved["telemetry_thumbnail_filename"]
         assert thumbnail.read_bytes().startswith(b"\x89PNG")
     finally:
-        config.uploads.coffee_image_dir = previous_dir
+        config.uploads.media_dir = previous_dir

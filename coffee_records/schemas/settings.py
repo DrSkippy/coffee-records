@@ -4,6 +4,8 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from coffee_records.models.shot import DrinkType
+
 
 class ShotDefaultsResponse(BaseModel):
     """Response schema for GET /api/defaults."""
@@ -14,7 +16,7 @@ class ShotDefaultsResponse(BaseModel):
     pre_infusion_time: str | None
     extraction_time: float | None
     final_weight: float | None
-    drink_type: str | None
+    drink_type: DrinkType | None
     grinder_temp_before: float | None
     wedge: bool
     shaker: bool
@@ -33,7 +35,7 @@ class ShotDefaultsUpdate(BaseModel):
     pre_infusion_time: str | None = None
     extraction_time: float | None = None
     final_weight: float | None = None
-    drink_type: str | None = None
+    drink_type: DrinkType | None = None
     grinder_temp_before: float | None = None
     wedge: bool = False
     shaker: bool = False

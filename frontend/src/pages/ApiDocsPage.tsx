@@ -211,6 +211,12 @@ const sections: Section[] = [
         curl: `curl ${BASE}/api/shots/makers`,
       },
       {
+        method: "GET",
+        path: "/api/shots/last-grind",
+        description: "Most recent grind setting recorded for a coffee. Required: coffee_id. Optional: grinder_id (only shots on that grinder). Fields are null for a coffee's first shot.",
+        curl: `curl "${BASE}/api/shots/last-grind?coffee_id=3&grinder_id=1"`,
+      },
+      {
         method: "POST",
         path: "/api/shots/import-csv",
         description: "Parse a Brewmeo shot CSV (multipart/form-data, field: file) into New Shot form values, a proposed new coffee, notes, and Beanconqueror-style telemetry JSON. Writes nothing to the database.",
@@ -544,9 +550,9 @@ export default function ApiDocsPage() {
       </Text>
 
       <Alert icon={<IconInfoCircle size={16} />} title="Authentication" color="blue" variant="light">
-        When <Code>API_KEY</Code> is configured, every <Code>/api/*</Code> request must include either an{" "}
-        <Code>X-API-Key: &lt;key&gt;</Code> header or an <Code>?api_key=&lt;key&gt;</Code> query
-        parameter. Requests without a valid key receive <Code>401 Unauthorized</Code>. Auth is
+        When <Code>API_KEY</Code> is configured, every <Code>/api/*</Code> request must include an{" "}
+        <Code>X-API-Key: &lt;key&gt;</Code> header (query-string keys are not accepted, so keys
+        never land in proxy logs). Requests without a valid key receive <Code>401 Unauthorized</Code>. Auth is
         disabled when <Code>API_KEY</Code> is unset.
       </Alert>
 

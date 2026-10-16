@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from coffee_records.config import Config, load_config  # noqa: E402
 from coffee_records.database import get_session, init_db  # noqa: E402
 from coffee_records.models.shot import Shot  # noqa: E402
+from coffee_records.services.storage import MediaStorage, thumbnail_name  # noqa: E402
 from coffee_records.services.telemetry import (  # noqa: E402
     TelemetryValidationError,
     render_telemetry_thumbnail,
@@ -20,8 +21,16 @@ logger = logging.getLogger(__name__)
 
 
 def backfill(config: Config, force: bool = False) -> tuple[int, int, int]:
-    """Generate missing thumbnails and return generated, skipped, failed counts."""
-    telemetry_dir = Path(config.uploads.coffee_image_dir) / "telemetry"
+    """Generate missing thumbnails for every shot with stored telemetry.
+
+    Args:
+        config: Application config (media directory).
+        force: Regenerate thumbnails that already exist.
+
+    Returns:
+        Counts of (generated, skipped, failed) thumbnails.
+    """
+    telemetry_dir = MediaStorage(config.uploads.media_dir).telemetry_dir
     generated = skipped = failed = 0
     with get_session() as session:
         filenames = session.query(Shot.telemetry_filename).filter(
@@ -31,7 +40,7 @@ def backfill(config: Config, force: bool = False) -> tuple[int, int, int]:
             if not filename:
                 continue
             json_path = telemetry_dir / filename
-            thumbnail_path = json_path.with_suffix(".png")
+            thumbnail_path = telemetry_dir / thumbnail_name(filename)
             if thumbnail_path.exists() and not force:
                 skipped += 1
                 continue

@@ -1,0 +1,15 @@
+# Settings for bin/import_ocr_data.py (handwritten shot-log OCR import).
+# Values describe the paper log sheets and the equipment in use at the time.
+year: 2026                     # log sheets record M/D only
+machine_cutover: 2026-02-19    # ECM first used on this date; Breville before
+drink_weight_grams: [40, 500]  # plausible "Drink Weight" range; outside is OCR noise
+unknown_maker: "Unknown"
+brewers:                       # circled initials on the sheet -> maker name
+  sc: "Scott"
+  sa: "Sara"
+  ot: "Other"
+equipment_keywords:            # substrings identifying each piece of equipment
+  mazzer: ["mazzer"]
+  baratza: ["baratza"]
+  breville: ["breville"]
+  ecm: ["ecm", "synchronika"]

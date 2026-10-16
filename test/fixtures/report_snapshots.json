@@ -1,0 +1,2280 @@
+{
+ "by_coffee": {
+  "body": {
+   "avg_dose": 18.725,
+   "avg_extraction_time": 29.255,
+   "avg_final_weight": 38.925,
+   "avg_ratio": 2.08,
+   "coffee_id": "<id>",
+   "shots": [
+    {
+     "date": "2026-02-05",
+     "dose_weight": 18.5,
+     "extraction_time": 32.2,
+     "final_weight": 37.5,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-02-06",
+     "dose_weight": 18.0,
+     "extraction_time": 26.8,
+     "final_weight": 36.7,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-02-08",
+     "dose_weight": 20.5,
+     "extraction_time": 27.0,
+     "final_weight": 41.4,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-02-09",
+     "dose_weight": 20.5,
+     "extraction_time": 27.5,
+     "final_weight": 37.4,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-02-11",
+     "dose_weight": 18.0,
+     "extraction_time": 26.5,
+     "final_weight": 32.4,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-02-12",
+     "dose_weight": 18.0,
+     "extraction_time": 33.6,
+     "final_weight": 32.4,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-02-14",
+     "dose_weight": 18.0,
+     "extraction_time": 29.4,
+     "final_weight": 37.5,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-02-15",
+     "dose_weight": 20.5,
+     "extraction_time": 31.5,
+     "final_weight": 43.9,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-02-17",
+     "dose_weight": 19.0,
+     "extraction_time": 33.3,
+     "final_weight": 38.5,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-02-18",
+     "dose_weight": 18.0,
+     "extraction_time": 32.3,
+     "final_weight": 38.8,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-02-20",
+     "dose_weight": 18.0,
+     "extraction_time": 30.6,
+     "final_weight": 40.9,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-02-21",
+     "dose_weight": 18.0,
+     "extraction_time": 26.1,
+     "final_weight": 40.0,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-02-23",
+     "dose_weight": 18.5,
+     "extraction_time": 26.6,
+     "final_weight": 40.5,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-02-24",
+     "dose_weight": 18.5,
+     "extraction_time": 30.1,
+     "final_weight": 42.2,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-02-26",
+     "dose_weight": 18.5,
+     "extraction_time": 26.0,
+     "final_weight": 42.1,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-02-27",
+     "dose_weight": 18.0,
+     "extraction_time": 29.6,
+     "final_weight": 34.0,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-03-01",
+     "dose_weight": 18.0,
+     "extraction_time": 34.0,
+     "final_weight": 39.7,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-03-02",
+     "dose_weight": 18.5,
+     "extraction_time": 27.6,
+     "final_weight": 37.0,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-03-04",
+     "dose_weight": 19.0,
+     "extraction_time": 28.1,
+     "final_weight": 42.6,
+     "shot_id": "<id>"
+    },
+    {
+     "date": "2026-03-05",
+     "dose_weight": 20.5,
+     "extraction_time": 26.3,
+     "final_weight": 43.0,
+     "shot_id": "<id>"
+    }
+   ],
+   "total_shots": 20
+  },
+  "status": 200
+ },
+ "dose_yield": {
+  "body": [
+   {
+    "date": "2026-02-05",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "dose_weight": 18.5,
+    "final_weight": 37.5,
+    "ratio": 2.027,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-06",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 36.7,
+    "ratio": 2.039,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-08",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 41.4,
+    "ratio": 2.02,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-09",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 37.4,
+    "ratio": 1.824,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-11",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "dose_weight": 18.0,
+    "final_weight": 32.4,
+    "ratio": 1.8,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-12",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 39.0,
+    "ratio": 2.108,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-12",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 32.4,
+    "ratio": 1.8,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-14",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "dose_weight": 20.5,
+    "final_weight": 43.7,
+    "ratio": 2.132,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-14",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 37.5,
+    "ratio": 2.083,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-15",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 41.4,
+    "ratio": 2.238,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-15",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 43.9,
+    "ratio": 2.141,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-17",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 37.0,
+    "ratio": 2.0,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-17",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "dose_weight": 19.0,
+    "final_weight": 38.5,
+    "ratio": 2.026,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-18",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 44.3,
+    "ratio": 2.161,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-18",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 38.8,
+    "ratio": 2.156,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-20",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 40.7,
+    "ratio": 2.2,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-20",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "dose_weight": 18.0,
+    "final_weight": 34.4,
+    "ratio": 1.911,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-20",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 40.9,
+    "ratio": 2.272,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-21",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 37.3,
+    "ratio": 1.82,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-21",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 19.0,
+    "final_weight": 38.7,
+    "ratio": 2.037,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-21",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 40.0,
+    "ratio": 2.222,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-23",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "dose_weight": 18.0,
+    "final_weight": 40.7,
+    "ratio": 2.261,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-23",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 46.0,
+    "ratio": 2.244,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-23",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "dose_weight": 18.5,
+    "final_weight": 40.5,
+    "ratio": 2.189,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-24",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.0,
+    "final_weight": 40.2,
+    "ratio": 2.01,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-24",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 39.8,
+    "ratio": 2.151,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-24",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 42.2,
+    "ratio": 2.281,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-26",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 39.8,
+    "ratio": 1.941,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-26",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "dose_weight": 20.5,
+    "final_weight": 40.5,
+    "ratio": 1.976,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-26",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 42.1,
+    "ratio": 2.276,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-27",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 34.1,
+    "ratio": 1.843,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-27",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 39.3,
+    "ratio": 2.124,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-27",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 34.0,
+    "ratio": 1.889,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-01",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "dose_weight": 20.0,
+    "final_weight": 39.7,
+    "ratio": 1.985,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-01",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.0,
+    "final_weight": 42.4,
+    "ratio": 2.12,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-01",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "dose_weight": 18.0,
+    "final_weight": 39.7,
+    "ratio": 2.206,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-02",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 35.2,
+    "ratio": 1.903,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-02",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.0,
+    "final_weight": 36.4,
+    "ratio": 1.82,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-02",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 37.0,
+    "ratio": 2.0,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-04",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 32.5,
+    "ratio": 1.806,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-04",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "dose_weight": 18.0,
+    "final_weight": 33.1,
+    "ratio": 1.839,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-04",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 19.0,
+    "final_weight": 42.6,
+    "ratio": 2.242,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-05",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 37.1,
+    "ratio": 2.005,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-05",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 45.7,
+    "ratio": 2.229,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-05",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 43.0,
+    "ratio": 2.098,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-07",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "dose_weight": 18.0,
+    "final_weight": 38.6,
+    "ratio": 2.144,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-07",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 19.0,
+    "final_weight": 42.9,
+    "ratio": 2.258,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-08",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.0,
+    "final_weight": 41.6,
+    "ratio": 2.08,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-08",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 19.0,
+    "final_weight": 39.8,
+    "ratio": 2.095,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-10",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 33.4,
+    "ratio": 1.856,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-10",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "dose_weight": 18.0,
+    "final_weight": 40.3,
+    "ratio": 2.239,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-11",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 47.0,
+    "ratio": 2.293,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-11",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.0,
+    "final_weight": 45.9,
+    "ratio": 2.295,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-13",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "dose_weight": 18.0,
+    "final_weight": 38.5,
+    "ratio": 2.139,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-13",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 34.0,
+    "ratio": 1.838,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-14",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 33.3,
+    "ratio": 1.8,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-16",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 40.6,
+    "ratio": 2.256,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-17",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 43.5,
+    "ratio": 2.122,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-19",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "dose_weight": 18.5,
+    "final_weight": 35.6,
+    "ratio": 1.924,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-20",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 45.3,
+    "ratio": 2.21,
+    "shot_id": "<id>"
+   }
+  ],
+  "status": 200
+ },
+ "dose_yield_filtered": {
+  "body": [
+   {
+    "date": "2026-02-06",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 36.7,
+    "ratio": 2.039,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-08",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 41.4,
+    "ratio": 2.02,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-12",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 39.0,
+    "ratio": 2.108,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-12",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 32.4,
+    "ratio": 1.8,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-14",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 37.5,
+    "ratio": 2.083,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-15",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 41.4,
+    "ratio": 2.238,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-15",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 43.9,
+    "ratio": 2.141,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-17",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 37.0,
+    "ratio": 2.0,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-18",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 44.3,
+    "ratio": 2.161,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-18",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 38.8,
+    "ratio": 2.156,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-20",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 40.7,
+    "ratio": 2.2,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-20",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 40.9,
+    "ratio": 2.272,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-21",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 37.3,
+    "ratio": 1.82,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-21",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 40.0,
+    "ratio": 2.222,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-23",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 46.0,
+    "ratio": 2.244,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-24",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.0,
+    "final_weight": 40.2,
+    "ratio": 2.01,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-24",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 39.8,
+    "ratio": 2.151,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-26",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 42.1,
+    "ratio": 2.276,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-27",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 34.1,
+    "ratio": 1.843,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-27",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 39.3,
+    "ratio": 2.124,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-27",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 34.0,
+    "ratio": 1.889,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-02",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 35.2,
+    "ratio": 1.903,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-02",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.0,
+    "final_weight": 36.4,
+    "ratio": 1.82,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-02",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 37.0,
+    "ratio": 2.0,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-04",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 32.5,
+    "ratio": 1.806,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-05",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 45.7,
+    "ratio": 2.229,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-05",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 43.0,
+    "ratio": 2.098,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-07",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 19.0,
+    "final_weight": 42.9,
+    "ratio": 2.258,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-08",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.0,
+    "final_weight": 41.6,
+    "ratio": 2.08,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-10",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 33.4,
+    "ratio": 1.856,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-11",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 47.0,
+    "ratio": 2.293,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-11",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.0,
+    "final_weight": 45.9,
+    "ratio": 2.295,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-13",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 34.0,
+    "ratio": 1.838,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-14",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.5,
+    "final_weight": 33.3,
+    "ratio": 1.8,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-16",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 18.0,
+    "final_weight": 40.6,
+    "ratio": 2.256,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-17",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "dose_weight": 20.5,
+    "final_weight": 43.5,
+    "ratio": 2.122,
+    "shot_id": "<id>"
+   }
+  ],
+  "status": 200
+ },
+ "extraction_trends": {
+  "body": [
+   {
+    "date": "2026-02-05",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "extraction_time": 32.2,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-06",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 26.8,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-08",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 27.0,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-09",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 27.5,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-11",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "extraction_time": 26.5,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-12",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 30.6,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-12",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 33.6,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-14",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "extraction_time": 28.6,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-14",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 29.4,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-15",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 29.3,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-15",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 31.5,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-17",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 33.9,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-17",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "extraction_time": 33.3,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-18",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 28.8,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-18",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 32.3,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-20",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 33.2,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-20",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "extraction_time": 31.7,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-20",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 30.6,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-21",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 27.8,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-21",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 26.4,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-21",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 26.1,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-23",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "extraction_time": 24.8,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-23",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 28.0,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-23",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "extraction_time": 26.6,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-24",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 29.6,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-24",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 30.5,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-24",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 30.1,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-26",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 28.4,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-26",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "extraction_time": 32.2,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-26",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 26.0,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-27",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 25.3,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-27",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 24.5,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-02-27",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 29.6,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-01",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "extraction_time": 25.2,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-01",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 33.3,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-01",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "extraction_time": 34.0,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-02",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 31.6,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-02",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 32.9,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-02",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 27.6,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-04",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 24.5,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-04",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "extraction_time": 28.7,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-04",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 28.1,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-05",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 26.9,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-05",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 28.9,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-05",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 26.3,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-07",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "extraction_time": 29.0,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-07",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 29.2,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-08",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 24.6,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-08",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 30.8,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-10",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 25.8,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-10",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "extraction_time": 24.9,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-11",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 33.2,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-11",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 33.5,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-13",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "extraction_time": 26.8,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-13",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 31.3,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-14",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 31.5,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-16",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 29.9,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-17",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 28.6,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-19",
+    "device_id": "<id>",
+    "device_label": "Breville Bambino",
+    "extraction_time": 33.9,
+    "shot_id": "<id>"
+   },
+   {
+    "date": "2026-03-20",
+    "device_id": "<id>",
+    "device_label": "ECM Synchronika",
+    "extraction_time": 33.9,
+    "shot_id": "<id>"
+   }
+  ],
+  "status": 200
+ },
+ "grind_model_params": {
+  "body": {
+   "a0": 0.21856197,
+   "a2": 0.00858026,
+   "a3": 0.00090179,
+   "a4": -0.08054788,
+   "a5": -0.02626735,
+   "coffee_intercepts": [
+    {
+     "coffee_id": "<id>",
+     "coffee_name": "Alpha",
+     "intercept": 85.06225107
+    },
+    {
+     "coffee_id": "<id>",
+     "coffee_name": "Bravo",
+     "intercept": 83.43095402
+    },
+    {
+     "coffee_id": "<id>",
+     "coffee_name": "Charlie",
+     "intercept": 82.01153419
+    }
+   ],
+   "converged": true,
+   "grinder_id": "<id>",
+   "grinder_label": "Mazzer Mini",
+   "n_coffees": 3,
+   "n_iterations": 1,
+   "n_shots_available": 41,
+   "n_shots_used": 38,
+   "points": [
+    {
+     "age_days": 7,
+     "date": "2026-02-08",
+     "grind": 85.5,
+     "grind_predicted": 84.9833,
+     "grind_predicted_str": "8+5",
+     "grind_str": "8+5 1/2",
+     "shot_id": "<id>",
+     "temp_offset": 2.3
+    },
+    {
+     "age_days": 10,
+     "date": "2026-02-11",
+     "grind": 84.5,
+     "grind_predicted": 85.1681,
+     "grind_predicted_str": "8+5 1/4",
+     "grind_str": "8+4 1/2",
+     "shot_id": "<id>",
+     "temp_offset": 3.8
+    },
+    {
+     "age_days": 11,
+     "date": "2026-02-12",
+     "grind": 84.0,
+     "grind_predicted": 83.6622,
+     "grind_predicted_str": "8+3 3/4",
+     "grind_str": "8+4",
+     "shot_id": "<id>",
+     "temp_offset": -3.0
+    },
+    {
+     "age_days": 13,
+     "date": "2026-02-14",
+     "grind": 83.0,
+     "grind_predicted": 82.9596,
+     "grind_predicted_str": "8+3",
+     "grind_str": "8+3",
+     "shot_id": "<id>",
+     "temp_offset": -4.7
+    },
+    {
+     "age_days": -5,
+     "date": "2026-02-15",
+     "grind": 82.5,
+     "grind_predicted": 82.6784,
+     "grind_predicted_str": "8+2 3/4",
+     "grind_str": "8+2 1/2",
+     "shot_id": "<id>",
+     "temp_offset": -4.7
+    },
+    {
+     "age_days": 14,
+     "date": "2026-02-15",
+     "grind": 84.5,
+     "grind_predicted": 84.6766,
+     "grind_predicted_str": "8+4 3/4",
+     "grind_str": "8+4 1/2",
+     "shot_id": "<id>",
+     "temp_offset": 3.6
+    },
+    {
+     "age_days": -2,
+     "date": "2026-02-18",
+     "grind": 85.75,
+     "grind_predicted": 85.2826,
+     "grind_predicted_str": "8+5 1/4",
+     "grind_str": "8+5 3/4",
+     "shot_id": "<id>",
+     "temp_offset": 8.2
+    },
+    {
+     "age_days": 17,
+     "date": "2026-02-18",
+     "grind": 83.75,
+     "grind_predicted": 84.0487,
+     "grind_predicted_str": "8+4",
+     "grind_str": "8+3 3/4",
+     "shot_id": "<id>",
+     "temp_offset": 1.8
+    },
+    {
+     "age_days": 0,
+     "date": "2026-02-20",
+     "grind": 84.5,
+     "grind_predicted": 84.3986,
+     "grind_predicted_str": "8+4 1/2",
+     "grind_str": "8+4 1/2",
+     "shot_id": "<id>",
+     "temp_offset": 4.2
+    },
+    {
+     "age_days": 19,
+     "date": "2026-02-20",
+     "grind": 83.75,
+     "grind_predicted": 83.2715,
+     "grind_predicted_str": "8+3 1/4",
+     "grind_str": "8+3 3/4",
+     "shot_id": "<id>",
+     "temp_offset": -0.7
+    },
+    {
+     "age_days": -12,
+     "date": "2026-02-21",
+     "grind": 83.5,
+     "grind_predicted": 82.6703,
+     "grind_predicted_str": "8+2 3/4",
+     "grind_str": "8+3 1/2",
+     "shot_id": "<id>",
+     "temp_offset": -1.8
+    },
+    {
+     "age_days": 20,
+     "date": "2026-02-21",
+     "grind": 82.5,
+     "grind_predicted": 82.6951,
+     "grind_predicted_str": "8+2 3/4",
+     "grind_str": "8+2 1/2",
+     "shot_id": "<id>",
+     "temp_offset": -2.9
+    },
+    {
+     "age_days": -10,
+     "date": "2026-02-23",
+     "grind": 83.0,
+     "grind_predicted": 82.3917,
+     "grind_predicted_str": "8+2 1/2",
+     "grind_str": "8+3",
+     "shot_id": "<id>",
+     "temp_offset": -1.2
+    },
+    {
+     "age_days": 3,
+     "date": "2026-02-23",
+     "grind": 82.5,
+     "grind_predicted": 82.7083,
+     "grind_predicted_str": "8+2 3/4",
+     "grind_str": "8+2 1/2",
+     "shot_id": "<id>",
+     "temp_offset": -1.5
+    },
+    {
+     "age_days": 22,
+     "date": "2026-02-23",
+     "grind": 82.25,
+     "grind_predicted": 82.6831,
+     "grind_predicted_str": "8+2 3/4",
+     "grind_str": "8+2 1/4",
+     "shot_id": "<id>",
+     "temp_offset": -2.3
+    },
+    {
+     "age_days": -9,
+     "date": "2026-02-24",
+     "grind": 82.5,
+     "grind_predicted": 82.4724,
+     "grind_predicted_str": "8+2 1/2",
+     "grind_str": "8+2 1/2",
+     "shot_id": "<id>",
+     "temp_offset": -1.2
+    },
+    {
+     "age_days": 4,
+     "date": "2026-02-24",
+     "grind": 83.25,
+     "grind_predicted": 83.7105,
+     "grind_predicted_str": "8+3 3/4",
+     "grind_str": "8+3 1/4",
+     "shot_id": "<id>",
+     "temp_offset": 3.1
+    },
+    {
+     "age_days": 6,
+     "date": "2026-02-26",
+     "grind": 84.0,
+     "grind_predicted": 84.4831,
+     "grind_predicted_str": "8+4 1/2",
+     "grind_str": "8+4",
+     "shot_id": "<id>",
+     "temp_offset": 6.9
+    },
+    {
+     "age_days": 25,
+     "date": "2026-02-26",
+     "grind": 81.0,
+     "grind_predicted": 81.8916,
+     "grind_predicted_str": "8+2",
+     "grind_str": "8+1",
+     "shot_id": "<id>",
+     "temp_offset": -4.6
+    },
+    {
+     "age_days": -4,
+     "date": "2026-03-01",
+     "grind": 82.0,
+     "grind_predicted": 82.5914,
+     "grind_predicted_str": "8+2 1/2",
+     "grind_str": "8+2",
+     "shot_id": "<id>",
+     "temp_offset": 1.3
+    },
+    {
+     "age_days": 28,
+     "date": "2026-03-01",
+     "grind": 83.5,
+     "grind_predicted": 82.9133,
+     "grind_predicted_str": "8+3",
+     "grind_str": "8+3 1/2",
+     "shot_id": "<id>",
+     "temp_offset": 0.7
+    },
+    {
+     "age_days": -3,
+     "date": "2026-03-02",
+     "grind": 81.0,
+     "grind_predicted": 81.2706,
+     "grind_predicted_str": "8+1 1/4",
+     "grind_str": "8+1",
+     "shot_id": "<id>",
+     "temp_offset": -4.8
+    },
+    {
+     "age_days": 10,
+     "date": "2026-03-02",
+     "grind": 82.25,
+     "grind_predicted": 82.6305,
+     "grind_predicted_str": "8+2 3/4",
+     "grind_str": "8+2 1/4",
+     "shot_id": "<id>",
+     "temp_offset": -0.5
+    },
+    {
+     "age_days": 29,
+     "date": "2026-03-02",
+     "grind": 82.75,
+     "grind_predicted": 82.3727,
+     "grind_predicted_str": "8+2 1/4",
+     "grind_str": "8+2 3/4",
+     "shot_id": "<id>",
+     "temp_offset": -1.6
+    },
+    {
+     "age_days": -1,
+     "date": "2026-03-04",
+     "grind": 83.75,
+     "grind_predicted": 83.956,
+     "grind_predicted_str": "8+4",
+     "grind_str": "8+3 3/4",
+     "shot_id": "<id>",
+     "temp_offset": 8.3
+    },
+    {
+     "age_days": 12,
+     "date": "2026-03-04",
+     "grind": 83.5,
+     "grind_predicted": 82.9596,
+     "grind_predicted_str": "8+3",
+     "grind_str": "8+3 1/2",
+     "shot_id": "<id>",
+     "temp_offset": 2.0
+    },
+    {
+     "age_days": 13,
+     "date": "2026-03-05",
+     "grind": 84.0,
+     "grind_predicted": 83.8855,
+     "grind_predicted_str": "8+4",
+     "grind_str": "8+4",
+     "shot_id": "<id>",
+     "temp_offset": 7.5
+    },
+    {
+     "age_days": 32,
+     "date": "2026-03-05",
+     "grind": 83.75,
+     "grind_predicted": 83.4243,
+     "grind_predicted_str": "8+3 1/2",
+     "grind_str": "8+3 3/4",
+     "shot_id": "<id>",
+     "temp_offset": 4.6
+    },
+    {
+     "age_days": 2,
+     "date": "2026-03-07",
+     "grind": 82.25,
+     "grind_predicted": 82.4125,
+     "grind_predicted_str": "8+2 1/2",
+     "grind_str": "8+2 1/4",
+     "shot_id": "<id>",
+     "temp_offset": 2.9
+    },
+    {
+     "age_days": 15,
+     "date": "2026-03-07",
+     "grind": 84.0,
+     "grind_predicted": 83.764,
+     "grind_predicted_str": "8+3 3/4",
+     "grind_str": "8+4",
+     "shot_id": "<id>",
+     "temp_offset": 7.7
+    },
+    {
+     "age_days": 3,
+     "date": "2026-03-08",
+     "grind": 83.5,
+     "grind_predicted": 83.4587,
+     "grind_predicted_str": "8+3 1/2",
+     "grind_str": "8+3 1/2",
+     "shot_id": "<id>",
+     "temp_offset": 8.1
+    },
+    {
+     "age_days": 6,
+     "date": "2026-03-11",
+     "grind": 82.0,
+     "grind_predicted": 83.0665,
+     "grind_predicted_str": "8+3",
+     "grind_str": "8+2",
+     "shot_id": "<id>",
+     "temp_offset": 7.6
+    },
+    {
+     "age_days": 19,
+     "date": "2026-03-11",
+     "grind": 83.75,
+     "grind_predicted": 83.1692,
+     "grind_predicted_str": "8+3 1/4",
+     "grind_str": "8+3 3/4",
+     "shot_id": "<id>",
+     "temp_offset": 6.4
+    },
+    {
+     "age_days": 21,
+     "date": "2026-03-13",
+     "grind": 80.75,
+     "grind_predicted": 81.0798,
+     "grind_predicted_str": "8+1",
+     "grind_str": "8+0 3/4",
+     "shot_id": "<id>",
+     "temp_offset": -3.4
+    },
+    {
+     "age_days": 9,
+     "date": "2026-03-14",
+     "grind": 80.75,
+     "grind_predicted": 80.6154,
+     "grind_predicted_str": "8+0 1/2",
+     "grind_str": "8+0 3/4",
+     "shot_id": "<id>",
+     "temp_offset": -3.6
+    },
+    {
+     "age_days": 11,
+     "date": "2026-03-16",
+     "grind": 82.5,
+     "grind_predicted": 81.9924,
+     "grind_predicted_str": "8+2",
+     "grind_str": "8+2 1/2",
+     "shot_id": "<id>",
+     "temp_offset": 4.5
+    },
+    {
+     "age_days": 12,
+     "date": "2026-03-17",
+     "grind": 80.25,
+     "grind_predicted": 79.9692,
+     "grind_predicted_str": "7+10",
+     "grind_str": "8+0 1/4",
+     "shot_id": "<id>",
+     "temp_offset": -4.6
+    },
+    {
+     "age_days": 14,
+     "date": "2026-03-19",
+     "grind": 82.75,
+     "grind_predicted": 82.883,
+     "grind_predicted_str": "8+3",
+     "grind_str": "8+2 3/4",
+     "shot_id": "<id>",
+     "temp_offset": 8.8
+    }
+   ],
+   "r_squared": 0.8723,
+   "target_times": [
+    {
+     "coffee_id": "<id>",
+     "target_shot_time": 27.9
+    },
+    {
+     "coffee_id": "<id>",
+     "target_shot_time": 30.6
+    },
+    {
+     "coffee_id": "<id>",
+     "target_shot_time": 29.2
+    }
+   ],
+   "training_id": "<id>"
+  },
+  "status": 200
+ },
+ "grind_model_train": {
+  "body": {
+   "a0": 0.21856197,
+   "a2": 0.00858026,
+   "a3": 0.00090179,
+   "a4": -0.08054788,
+   "a5": -0.02626735,
+   "coffee_intercepts": [
+    {
+     "coffee_id": "<id>",
+     "coffee_name": "Alpha",
+     "intercept": 85.06225107
+    },
+    {
+     "coffee_id": "<id>",
+     "coffee_name": "Bravo",
+     "intercept": 83.43095402
+    },
+    {
+     "coffee_id": "<id>",
+     "coffee_name": "Charlie",
+     "intercept": 82.01153419
+    }
+   ],
+   "converged": true,
+   "grinder_id": "<id>",
+   "grinder_label": "Mazzer Mini",
+   "n_coffees": 3,
+   "n_iterations": 1,
+   "n_shots_available": 41,
+   "n_shots_used": 38,
+   "r_squared": 0.8723,
+   "training_id": "<id>"
+  },
+  "status": 201
+ },
+ "grind_regression_baratza": {
+  "body": {
+   "coffee_id": "<id>",
+   "grinders": [
+    {
+     "coefficients": {
+      "a": -0.105766,
+      "b": -0.043251,
+      "c": 18.184107
+     },
+     "grinder_id": "<id>",
+     "grinder_label": "Baratza Virtuoso+",
+     "n_shots": 4,
+     "points": [
+      {
+       "date": "2026-02-14",
+       "shot_id": "<id>",
+       "x1": -6,
+       "x2": -0.6,
+       "y": 19.0,
+       "y_predicted": 18.8447,
+       "y_predicted_str": "18.84",
+       "y_str": "19"
+      },
+      {
+       "date": "2026-02-21",
+       "shot_id": "<id>",
+       "x1": 1,
+       "x2": -1.2,
+       "y": 17.9,
+       "y_predicted": 18.1302,
+       "y_predicted_str": "18.13",
+       "y_str": "17.9"
+      },
+      {
+       "date": "2026-03-01",
+       "shot_id": "<id>",
+       "x1": 9,
+       "x2": 7.8,
+       "y": 16.9,
+       "y_predicted": 16.8949,
+       "y_predicted_str": "16.89",
+       "y_str": "16.9"
+      },
+      {
+       "date": "2026-03-08",
+       "shot_id": "<id>",
+       "x1": 16,
+       "x2": -3.2,
+       "y": 16.7,
+       "y_predicted": 16.6302,
+       "y_predicted_str": "16.63",
+       "y_str": "16.7"
+      }
+     ],
+     "r_squared": 0.9755
+    }
+   ],
+   "roast_date": "2026-02-20",
+   "target_shot_time": 30.5
+  },
+  "status": 200
+ },
+ "grind_regression_default": {
+  "body": {
+   "coffee_id": "<id>",
+   "grinders": [
+    {
+     "coefficients": {
+      "a": -0.07294,
+      "b": 0.244987,
+      "c": 84.874444
+     },
+     "grinder_id": "<id>",
+     "grinder_label": "Mazzer Mini",
+     "n_shots": 16,
+     "points": [
+      {
+       "date": "2026-02-05",
+       "shot_id": "<id>",
+       "x1": 4,
+       "x2": -0.3,
+       "y": 84.75,
+       "y_predicted": 84.5092,
+       "y_predicted_str": "8+4 1/2",
+       "y_str": "8+4 3/4"
+      },
+      {
+       "date": "2026-02-06",
+       "shot_id": "<id>",
+       "x1": 5,
+       "x2": 2.0,
+       "y": 84.5,
+       "y_predicted": 84.9997,
+       "y_predicted_str": "8+5",
+       "y_str": "8+4 1/2"
+      },
+      {
+       "date": "2026-02-08",
+       "shot_id": "<id>",
+       "x1": 7,
+       "x2": 2.3,
+       "y": 85.5,
+       "y_predicted": 84.9273,
+       "y_predicted_str": "8+5",
+       "y_str": "8+5 1/2"
+      },
+      {
+       "date": "2026-02-11",
+       "shot_id": "<id>",
+       "x1": 10,
+       "x2": 3.8,
+       "y": 84.5,
+       "y_predicted": 85.076,
+       "y_predicted_str": "8+5",
+       "y_str": "8+4 1/2"
+      },
+      {
+       "date": "2026-02-12",
+       "shot_id": "<id>",
+       "x1": 11,
+       "x2": -3.0,
+       "y": 84.0,
+       "y_predicted": 83.3371,
+       "y_predicted_str": "8+3 1/4",
+       "y_str": "8+4"
+      },
+      {
+       "date": "2026-02-14",
+       "shot_id": "<id>",
+       "x1": 13,
+       "x2": -4.7,
+       "y": 83.0,
+       "y_predicted": 82.7748,
+       "y_predicted_str": "8+2 3/4",
+       "y_str": "8+3"
+      },
+      {
+       "date": "2026-02-15",
+       "shot_id": "<id>",
+       "x1": 14,
+       "x2": 3.6,
+       "y": 84.5,
+       "y_predicted": 84.7352,
+       "y_predicted_str": "8+4 3/4",
+       "y_str": "8+4 1/2"
+      },
+      {
+       "date": "2026-02-18",
+       "shot_id": "<id>",
+       "x1": 17,
+       "x2": 1.8,
+       "y": 83.75,
+       "y_predicted": 84.0754,
+       "y_predicted_str": "8+4",
+       "y_str": "8+3 3/4"
+      },
+      {
+       "date": "2026-02-20",
+       "shot_id": "<id>",
+       "x1": 19,
+       "x2": -0.7,
+       "y": 83.75,
+       "y_predicted": 83.3171,
+       "y_predicted_str": "8+3 1/4",
+       "y_str": "8+3 3/4"
+      },
+      {
+       "date": "2026-02-21",
+       "shot_id": "<id>",
+       "x1": 20,
+       "x2": -2.9,
+       "y": 82.5,
+       "y_predicted": 82.7052,
+       "y_predicted_str": "8+2 3/4",
+       "y_str": "8+2 1/2"
+      },
+      {
+       "date": "2026-02-23",
+       "shot_id": "<id>",
+       "x1": 22,
+       "x2": -2.3,
+       "y": 82.25,
+       "y_predicted": 82.7063,
+       "y_predicted_str": "8+2 3/4",
+       "y_str": "8+2 1/4"
+      },
+      {
+       "date": "2026-02-26",
+       "shot_id": "<id>",
+       "x1": 25,
+       "x2": -4.6,
+       "y": 81.0,
+       "y_predicted": 81.924,
+       "y_predicted_str": "8+2",
+       "y_str": "8+1"
+      },
+      {
+       "date": "2026-02-27",
+       "shot_id": "<id>",
+       "x1": 26,
+       "x2": 5.7,
+       "y": 84.5,
+       "y_predicted": 84.3744,
+       "y_predicted_str": "8+4 1/4",
+       "y_str": "8+4 1/2"
+      },
+      {
+       "date": "2026-03-01",
+       "shot_id": "<id>",
+       "x1": 28,
+       "x2": 0.7,
+       "y": 83.5,
+       "y_predicted": 83.0036,
+       "y_predicted_str": "8+3",
+       "y_str": "8+3 1/2"
+      },
+      {
+       "date": "2026-03-02",
+       "shot_id": "<id>",
+       "x1": 29,
+       "x2": -1.6,
+       "y": 82.75,
+       "y_predicted": 82.3672,
+       "y_predicted_str": "8+2 1/4",
+       "y_str": "8+2 3/4"
+      },
+      {
+       "date": "2026-03-05",
+       "shot_id": "<id>",
+       "x1": 32,
+       "x2": 4.6,
+       "y": 83.75,
+       "y_predicted": 83.6673,
+       "y_predicted_str": "8+3 3/4",
+       "y_str": "8+3 3/4"
+      }
+     ],
+     "r_squared": 0.8271
+    }
+   ],
+   "roast_date": "2026-02-01",
+   "target_shot_time": 28.1
+  },
+  "status": 200
+ },
+ "shots_per_day": {
+  "body": [
+   {
+    "count": 1,
+    "date": "2026-02-05"
+   },
+   {
+    "count": 1,
+    "date": "2026-02-06"
+   },
+   {
+    "count": 1,
+    "date": "2026-02-08"
+   },
+   {
+    "count": 1,
+    "date": "2026-02-09"
+   },
+   {
+    "count": 1,
+    "date": "2026-02-11"
+   },
+   {
+    "count": 1,
+    "date": "2026-02-12"
+   },
+   {
+    "count": 1,
+    "date": "2026-02-14"
+   },
+   {
+    "count": 1,
+    "date": "2026-02-15"
+   },
+   {
+    "count": 1,
+    "date": "2026-02-17"
+   },
+   {
+    "count": 1,
+    "date": "2026-02-18"
+   },
+   {
+    "count": 1,
+    "date": "2026-02-20"
+   },
+   {
+    "count": 1,
+    "date": "2026-02-21"
+   },
+   {
+    "count": 1,
+    "date": "2026-02-23"
+   },
+   {
+    "count": 1,
+    "date": "2026-02-24"
+   },
+   {
+    "count": 1,
+    "date": "2026-02-26"
+   },
+   {
+    "count": 1,
+    "date": "2026-02-27"
+   },
+   {
+    "count": 1,
+    "date": "2026-03-01"
+   },
+   {
+    "count": 1,
+    "date": "2026-03-02"
+   },
+   {
+    "count": 1,
+    "date": "2026-03-04"
+   },
+   {
+    "count": 1,
+    "date": "2026-03-05"
+   }
+  ],
+  "status": 200
+ },
+ "shots_per_grinder": {
+  "body": [
+   {
+    "count": 48,
+    "grinder_id": "<id>",
+    "make": "Mazzer",
+    "model": "Mini"
+   },
+   {
+    "count": 12,
+    "grinder_id": "<id>",
+    "make": "Baratza",
+    "model": "Virtuoso+"
+   }
+  ],
+  "status": 200
+ },
+ "target_shot_time": {
+  "body": {
+   "coffee_id": "<id>",
+   "device_id": null,
+   "grinder_id": "<id>",
+   "n_shots": 14,
+   "target_shot_time": 27.9
+  },
+  "status": 200
+ }
+}

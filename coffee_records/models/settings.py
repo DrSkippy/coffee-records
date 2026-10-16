@@ -2,10 +2,14 @@
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, String, func
+from sqlalchemy import Boolean, DateTime, Enum, Float, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from coffee_records.database import Base
+from coffee_records.models.shot import DrinkType
+
+# Primary key of the single ShotDefaults row.
+SHOT_DEFAULTS_ID = 1
 
 
 class ShotDefaults(Base):
@@ -13,13 +17,17 @@ class ShotDefaults(Base):
 
     __tablename__ = "shot_defaults"
 
-    id: Mapped[int] = mapped_column(primary_key=True, default=1)
-    maker: Mapped[str] = mapped_column(String(255), nullable=False, default="Scott")
+    id: Mapped[int] = mapped_column(primary_key=True, default=SHOT_DEFAULTS_ID)
+    maker: Mapped[str] = mapped_column(String(255), nullable=False)
     dose_weight: Mapped[float | None] = mapped_column(Float, nullable=True)
     pre_infusion_time: Mapped[str | None] = mapped_column(String(50), nullable=True)
     extraction_time: Mapped[float | None] = mapped_column(Float, nullable=True)
     final_weight: Mapped[float | None] = mapped_column(Float, nullable=True)
-    drink_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # Stored as VARCHAR (not the drink_type enum) to match the existing schema;
+    # values are validated against DrinkType.
+    drink_type: Mapped[DrinkType | None] = mapped_column(
+        Enum(DrinkType, native_enum=False, length=50), nullable=True
+    )
     grinder_temp_before: Mapped[float | None] = mapped_column(Float, nullable=True)
     wedge: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     shaker: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

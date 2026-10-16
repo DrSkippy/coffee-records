@@ -1,17 +1,26 @@
 """Reports blueprint — /api/reports/*."""
 
-from datetime import date
+from collections.abc import Sequence
+from http import HTTPStatus
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from flask.typing import ResponseReturnValue
+from pydantic import BaseModel
 
+from coffee_records.blueprints.helpers import (
+    get_config,
+    query_date,
+    query_int,
+    require_query_int,
+)
 from coffee_records.database import get_session
+from coffee_records.schemas.reports import TargetShotTimeResponse
+from coffee_records.services.grind_model import fit_grind_model, get_grind_model_params
 from coffee_records.services.reports import (
+    ShotFilter,
     by_coffee,
     dose_yield_over_time,
     extraction_trends,
-    fit_grind_model,
-    get_grind_model_params,
     grind_regression,
     shots_per_day,
     shots_per_grinder,
@@ -21,31 +30,34 @@ from coffee_records.services.reports import (
 reports_bp = Blueprint("reports", __name__, url_prefix="/api/reports")
 
 
-def _parse_dates() -> tuple[date | None, date | None]:
-    """Parse date_from and date_to query parameters.
+def _shot_filter(*, include_grinder: bool = True) -> ShotFilter:
+    """Build a ShotFilter from query parameters, defaulting the date range.
+
+    Args:
+        include_grinder: Whether to honour the grinder_id parameter.
 
     Returns:
-        Tuple of (date_from, date_to), either may be None.
+        A filter with both dates set.
     """
-    date_from = None
-    date_to = None
-    if df := request.args.get("date_from"):
-        date_from = date.fromisoformat(df)
-    if dt := request.args.get("date_to"):
-        date_to = date.fromisoformat(dt)
-    return date_from, date_to
+    return ShotFilter(
+        date_from=query_date("date_from"),
+        date_to=query_date("date_to"),
+        coffee_id=query_int("coffee_id"),
+        grinder_id=query_int("grinder_id") if include_grinder else None,
+        device_id=query_int("device_id"),
+    ).with_default_range(get_config().reports.default_range_days)
 
 
-def _parse_filters() -> tuple[int | None, int | None, int | None]:
-    """Parse coffee_id, grinder_id, device_id query parameters.
+def _json_list(items: Sequence[BaseModel]) -> ResponseReturnValue:
+    """Serialize a list of Pydantic models as a JSON array.
+
+    Args:
+        items: Response models.
 
     Returns:
-        Tuple of (coffee_id, grinder_id, device_id), any may be None.
+        Flask JSON response.
     """
-    coffee_id = int(c) if (c := request.args.get("coffee_id")) else None
-    grinder_id = int(g) if (g := request.args.get("grinder_id")) else None
-    device_id = int(d) if (d := request.args.get("device_id")) else None
-    return coffee_id, grinder_id, device_id
+    return jsonify([item.model_dump(mode="json") for item in items])
 
 
 @reports_bp.get("/dose-yield")
@@ -55,14 +67,9 @@ def report_dose_yield() -> ResponseReturnValue:
     Returns:
         JSON list of dose/yield data points.
     """
-    date_from, date_to = _parse_dates()
-    coffee_id, grinder_id, device_id = _parse_filters()
+    shot_filter = _shot_filter()
     with get_session() as session:
-        return jsonify(
-            dose_yield_over_time(
-                session, date_from, date_to, coffee_id, grinder_id, device_id
-            )
-        )
+        return _json_list(dose_yield_over_time(session, shot_filter))
 
 
 @reports_bp.get("/shots-per-day")
@@ -72,12 +79,9 @@ def report_shots_per_day() -> ResponseReturnValue:
     Returns:
         JSON list of date/count pairs.
     """
-    date_from, date_to = _parse_dates()
-    coffee_id, grinder_id, device_id = _parse_filters()
+    shot_filter = _shot_filter()
     with get_session() as session:
-        return jsonify(
-            shots_per_day(session, date_from, date_to, coffee_id, grinder_id, device_id)
-        )
+        return _json_list(shots_per_day(session, shot_filter))
 
 
 @reports_bp.get("/extraction-trends")
@@ -87,14 +91,9 @@ def report_extraction_trends() -> ResponseReturnValue:
     Returns:
         JSON list of extraction time data points.
     """
-    date_from, date_to = _parse_dates()
-    coffee_id, grinder_id, device_id = _parse_filters()
+    shot_filter = _shot_filter()
     with get_session() as session:
-        return jsonify(
-            extraction_trends(
-                session, date_from, date_to, coffee_id, grinder_id, device_id
-            )
-        )
+        return _json_list(extraction_trends(session, shot_filter))
 
 
 @reports_bp.get("/shots-per-grinder")
@@ -104,13 +103,9 @@ def report_shots_per_grinder() -> ResponseReturnValue:
     Returns:
         JSON list of grinder_id/make/model/count objects, sorted by count descending.
     """
-    date_from, date_to = _parse_dates()
-    coffee_id = int(c) if (c := request.args.get("coffee_id")) else None
-    device_id = int(d) if (d := request.args.get("device_id")) else None
+    shot_filter = _shot_filter(include_grinder=False)
     with get_session() as session:
-        return jsonify(
-            shots_per_grinder(session, date_from, date_to, coffee_id, device_id)
-        )
+        return _json_list(shots_per_grinder(session, shot_filter))
 
 
 @reports_bp.get("/grind-regression")
@@ -120,27 +115,18 @@ def report_grind_regression() -> ResponseReturnValue:
     Returns:
         JSON with per-grinder regression coefficients, R², and data points.
     """
-    raw = request.args.get("coffee_id")
-    if not raw:
-        return jsonify({"error": "coffee_id required"}), 400
-    try:
-        coffee_id = int(raw)
-    except ValueError:
-        return jsonify({"error": "coffee_id must be an integer"}), 400
-    explicit_grinder_id = int(g) if (g := request.args.get("grinder_id")) else None
-
+    coffee_id = require_query_int("coffee_id")
+    explicit_grinder_id = query_int("grinder_id")
+    config = get_config()
     with get_session() as session:
-        try:
-            return jsonify(grind_regression(session, coffee_id, explicit_grinder_id))
-        except ValueError as exc:
-            msg = str(exc)
-            if msg == "not_found":
-                return jsonify({"error": "coffee not found"}), 404
-            if msg == "no_roast_date":
-                return jsonify({"error": "coffee has no roast_date"}), 404
-            if msg == "insufficient_data":
-                return jsonify({"error": "fewer than 3 usable data points"}), 422
-            raise
+        result = grind_regression(
+            session,
+            coffee_id,
+            explicit_grinder_id,
+            params=config.grind_model,
+            grinders=config.grinders,
+        )
+        return jsonify(result.model_dump(mode="json"))
 
 
 @reports_bp.get("/target-shot-time")
@@ -155,36 +141,29 @@ def report_target_shot_time() -> ResponseReturnValue:
     Returns:
         JSON with target_shot_time (seconds, 1 decimal), n_shots, and filter echo.
     """
-    raw = request.args.get("coffee_id")
-    if not raw:
-        return jsonify({"error": "coffee_id required"}), 400
-    try:
-        coffee_id = int(raw)
-    except ValueError:
-        return jsonify({"error": "coffee_id must be an integer"}), 400
-
-    grinder_id = int(g) if (g := request.args.get("grinder_id")) else None
-    device_id = int(d) if (d := request.args.get("device_id")) else None
-
+    coffee_id = require_query_int("coffee_id")
+    grinder_id = query_int("grinder_id")
+    device_id = query_int("device_id")
     with get_session() as session:
-        wma, n_shots = target_shot_time_wma(session, coffee_id, grinder_id, device_id)
-        return jsonify(
-            {
-                "coffee_id": coffee_id,
-                "grinder_id": grinder_id,
-                "device_id": device_id,
-                "target_shot_time": wma,
-                "n_shots": n_shots,
-            }
+        wma, n_shots = target_shot_time_wma(
+            session, coffee_id, grinder_id, device_id, get_config().grind_model
         )
+    response = TargetShotTimeResponse(
+        coffee_id=coffee_id,
+        grinder_id=grinder_id,
+        device_id=device_id,
+        target_shot_time=wma,
+        n_shots=n_shots,
+    )
+    return jsonify(response.model_dump(mode="json"))
 
 
 @reports_bp.post("/grind-model/train")
 def report_grind_model_train() -> ResponseReturnValue:
     """Fit (or re-fit) the multivariate grind model for a grinder.
 
-    Warm-starts from the most recent existing training for this grinder.
-    New coffees are initialized to a mid-range Mazzer setting (85.0).
+    Each training is a fresh closed-form fit over all current eligible shots;
+    previous trainings are kept for history.
 
     Query params:
         grinder_id (required): Grinder to train for.
@@ -192,28 +171,10 @@ def report_grind_model_train() -> ResponseReturnValue:
     Returns:
         JSON GrindModelTrainingResponse with 201 status.
     """
-    raw = request.args.get("grinder_id")
-    if not raw:
-        return jsonify({"error": "grinder_id required"}), 400
-    try:
-        grinder_id = int(raw)
-    except ValueError:
-        return jsonify({"error": "grinder_id must be an integer"}), 400
-
+    grinder_id = require_query_int("grinder_id")
     with get_session() as session:
-        try:
-            result = fit_grind_model(session, grinder_id)
-            return jsonify(result), 201
-        except ValueError as exc:
-            msg = str(exc)
-            if msg == "grinder_not_found":
-                return jsonify({"error": "grinder not found"}), 404
-            if msg == "insufficient_data":
-                return (
-                    jsonify({"error": "fewer than 3 usable shots after filtering"}),
-                    422,
-                )
-            raise
+        result = fit_grind_model(session, grinder_id, get_config().grind_model)
+        return jsonify(result.model_dump(mode="json")), HTTPStatus.CREATED
 
 
 @reports_bp.get("/grind-model/params")
@@ -232,39 +193,20 @@ def report_grind_model_params() -> ResponseReturnValue:
     Returns:
         JSON GrindModelParamsResponse including data points for plotting.
     """
-    raw = request.args.get("grinder_id")
-    if not raw:
-        return jsonify({"error": "grinder_id required"}), 400
-    try:
-        grinder_id = int(raw)
-    except ValueError:
-        return jsonify({"error": "grinder_id must be an integer"}), 400
-
-    training_id = int(t) if (t := request.args.get("training_id")) else None
-
-    as_of = None
-    if ao := request.args.get("as_of"):
-        try:
-            from datetime import date as _date
-
-            as_of = _date.fromisoformat(ao)
-        except ValueError:
-            return jsonify({"error": "as_of must be an ISO date (YYYY-MM-DD)"}), 400
-
+    grinder_id = require_query_int("grinder_id")
+    training_id = query_int("training_id")
+    as_of = query_date("as_of")
+    config = get_config()
     with get_session() as session:
-        try:
-            result = get_grind_model_params(session, grinder_id, training_id, as_of)
-            return jsonify(result)
-        except ValueError as exc:
-            msg = str(exc)
-            if msg == "grinder_not_found":
-                return jsonify({"error": "grinder not found"}), 404
-            if msg == "no_training":
-                return (
-                    jsonify({"error": "no trained model found for this grinder"}),
-                    404,
-                )
-            raise
+        result = get_grind_model_params(
+            session,
+            grinder_id,
+            training_id,
+            as_of,
+            params=config.grind_model,
+            grinders=config.grinders,
+        )
+        return jsonify(result.model_dump(mode="json"))
 
 
 @reports_bp.get("/by-coffee/<int:coffee_id>")
@@ -277,6 +219,10 @@ def report_by_coffee(coffee_id: int) -> ResponseReturnValue:
     Returns:
         JSON dict with aggregate stats and shot list.
     """
-    date_from, date_to = _parse_dates()
+    shot_filter = ShotFilter(
+        date_from=query_date("date_from"),
+        date_to=query_date("date_to"),
+        coffee_id=coffee_id,
+    ).with_default_range(get_config().reports.default_range_days)
     with get_session() as session:
-        return jsonify(by_coffee(session, coffee_id, date_from, date_to))
+        return jsonify(by_coffee(session, shot_filter).model_dump(mode="json"))

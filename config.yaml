@@ -1,7 +1,8 @@
+# Non-secret settings only. Secrets (SECRET_KEY, API_KEY, POSTGRES_USER,
+# POSTGRES_PASSWORD) come from the environment — see .envrc.example.
+# POSTGRES_HOST / POSTGRES_PORT / POSTGRES_DATABASE override the database block.
 app:
   debug: false
-  secret_key: "changeme"
-  api_key: ""  # set API_KEY env var to enforce authentication on /api/* routes
 database:
   host: "192.168.1.91"
   port: 5434
@@ -9,10 +10,48 @@ database:
   pool_size: 5
 logging:
   level: "INFO"
+  format: "%(asctime)s %(levelname)s %(name)s: %(message)s"
 server:
   host: "0.0.0.0"
   port: 5000
   workers: 4
 uploads:
-  coffee_image_dir: "/resources"
+  media_dir: "/resources"
   coffee_image_base_url: "https://resources.drskippy.app/coffee"
+reports:
+  default_range_days: 30
+grind_model:
+  reference_temp_f: 65.0      # grinder temperature features are centered here
+  reference_dose_g: 20.0      # dose features are centered here
+  target_brew_ratio: 2.0      # yield feature = final_weight - ratio * dose
+  min_within_coffee_range: 0.5  # features varying less than this within every coffee get coefficient 0
+  min_points: 3               # minimum usable shots to fit a regression/model
+  espresso_drink_types: [americano, latte, cappuccino]
+grinders:
+  dual_scale_keywords: ["mazzer"]           # "8+7 1/2" notation
+  single_number_keywords: ["option-o", "timemore", "baratza"]  # "19.5" notation
+  dual_scale_min_value: 30.0  # numeric grind values below this are single-number settings
+matching:
+  coffee_name_threshold: 0.8
+  roaster_threshold: 0.5
+  token_overlap_threshold: 0.5
+  equipment_min_overlap: 0.5
+brewmeo:
+  flow_smoothing_tenths: 5
+  flow_half_window_tenths: 5
+  disturbance_grams: 5.0      # a weight jump this large this fast is a bumped cup
+  disturbance_seconds: 0.25
+  disturbance_tail_fraction: 0.2
+  final_weight_tolerance_grams: 2.0
+shot_defaults_seed:
+  maker: "Scott"
+  dose_weight: 20.0
+  pre_infusion_time: "5+5"
+  extraction_time: 28.0
+  final_weight: 40.0
+  drink_type: "americano"
+  grinder_temp_before: 64.0
+  wedge: true
+  shaker: true
+  wdt: true
+  flow_taper: false

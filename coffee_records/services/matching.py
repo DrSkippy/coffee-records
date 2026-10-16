@@ -4,6 +4,8 @@ import re
 from collections.abc import Iterable
 from difflib import SequenceMatcher
 
+from coffee_records.config import MatchingConfig
+
 # Words too generic to identify a piece of equipment on their own.
 _EQUIPMENT_STOPWORDS = frozenset({"coffee", "espresso", "grinder", "machine", "the"})
 
@@ -25,26 +27,68 @@ def token_overlap(a: str, b: str) -> float:
     return len(tokens_a & tokens_b) / len(tokens_a)
 
 
-def fuzzy_match(a: str, b: str, threshold: float = 0.8) -> bool:
+def fuzzy_match(
+    a: str, b: str, threshold: float = 0.8, overlap_threshold: float = 0.5
+) -> bool:
     """Return True if ``a`` and ``b`` are similar by token overlap or edit distance.
 
-    Tries token overlap first (> 0.5 is an immediate match). Falls back to
-    SequenceMatcher ratio for single-word names or abbreviations (e.g.
-    "Ollancay" vs "Ollancey", "Col." vs "Collective").
+    Tries token overlap first (above ``overlap_threshold`` is an immediate
+    match). Falls back to SequenceMatcher ratio for single-word names or
+    abbreviations (e.g. "Ollancay" vs "Ollancey", "Col." vs "Collective").
 
     Args:
         a: Incoming string.
         b: Existing string.
         threshold: SequenceMatcher ratio floor for the fallback path.
+        overlap_threshold: Token-overlap fraction that counts as a match.
 
     Returns:
         True if the strings are considered equivalent.
     """
     if not a or not b:
         return False
-    if token_overlap(a, b) > 0.5:
+    if token_overlap(a, b) > overlap_threshold:
         return True
     return SequenceMatcher(None, a.lower(), b.lower()).ratio() >= threshold
+
+
+def is_same_beans(
+    name: str,
+    roaster: str | None,
+    candidate_name: str,
+    candidate_roaster: str,
+    matching: MatchingConfig | None = None,
+) -> bool:
+    """Return True if an incoming coffee looks like an existing one.
+
+    Names need a stricter similarity than roasters, since roaster names are
+    frequently abbreviated ("Queenly Col." vs "Queen City Collective"). An
+    empty incoming roaster matches any roaster.
+
+    Args:
+        name: Incoming coffee name.
+        roaster: Incoming roaster, if known.
+        candidate_name: Existing coffee name.
+        candidate_roaster: Existing roaster.
+        matching: Similarity thresholds (defaults to built-in settings).
+
+    Returns:
+        True when name (and roaster, if given) match.
+    """
+    matching = matching or MatchingConfig()
+    name_matches = fuzzy_match(
+        name,
+        candidate_name,
+        threshold=matching.coffee_name_threshold,
+        overlap_threshold=matching.token_overlap_threshold,
+    )
+    roaster_matches = not roaster or fuzzy_match(
+        roaster,
+        candidate_roaster,
+        threshold=matching.roaster_threshold,
+        overlap_threshold=matching.token_overlap_threshold,
+    )
+    return name_matches and roaster_matches
 
 
 def normalize_tokens(text: str) -> set[str]:

@@ -29,11 +29,11 @@ RUN poetry config virtualenvs.create false \
 # Copy application code
 COPY coffee_records/ ./coffee_records/
 COPY bin/backfill_telemetry_thumbnails.py ./bin/backfill_telemetry_thumbnails.py
-COPY config.yaml ./
+COPY config.yaml gunicorn.conf.py ./
 
 # Copy built frontend into Flask static directory
 COPY --from=frontend-build /app/frontend/dist/ ./coffee_records/static/
 
 EXPOSE 5000
 
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "coffee_records:create_app()"]
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "coffee_records:create_app()"]

@@ -55,8 +55,8 @@ def test_telemetry_upload_replace_failure_and_delete(
     client: FlaskClient, tmp_path: Path
 ) -> None:
     config = client.application.config["APP_CONFIG"]
-    previous_dir = config.uploads.coffee_image_dir
-    config.uploads.coffee_image_dir = str(tmp_path)
+    previous_dir = config.uploads.media_dir
+    config.uploads.media_dir = str(tmp_path)
     try:
         coffee = client.post(
             "/api/coffees", json={"name": "Blend", "roaster": "Roaster"}
@@ -107,4 +107,4 @@ def test_telemetry_upload_replace_failure_and_delete(
         assert not (telemetry_dir / json_name).exists()
         assert not (telemetry_dir / png_name).exists()
     finally:
-        config.uploads.coffee_image_dir = previous_dir
+        config.uploads.media_dir = previous_dir
