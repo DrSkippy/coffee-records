@@ -20,15 +20,28 @@ import { DateInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
-import { useEffect, useRef, useState } from "react";
+import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { createCoffee, getCoffees } from "../api/coffees";
 import { getDefaults } from "../api/defaults";
 import { getBrewingDevices, getGrinders, getScales } from "../api/equipment";
-import { createShot, getMakers, uploadShotTelemetry, uploadShotVideo } from "../api/shots";
+import {
+  createShot,
+  getLastGrind,
+  getMakers,
+  uploadShotTelemetry,
+  uploadShotVideo,
+} from "../api/shots";
 import MakerSelect from "../components/shots/MakerSelect";
 import { defaultMakerAt } from "../utils/makers";
-import type { BrewingDevice, Coffee, Grinder, Scale, ShotCsvImport } from "../types";
+import type {
+  BrewingDevice,
+  Coffee,
+  Grinder,
+  LastGrind,
+  Scale,
+  ShotCsvImport,
+} from "../types";
 
 const posToValue = (pos: number): number => {
   if (pos === 0) return 0;
@@ -195,6 +208,47 @@ export default function NewShotPage() {
     },
   });
 
+  // Grind setting defaults to the last one recorded for the chosen coffee on
+  // the chosen grinder (empty for a coffee's first shot). A grind typed by the
+  // user, or supplied by a CSV import, is never overwritten.
+  const grindEdited = useRef(Boolean(csvImport?.fields.grind_setting));
+  const [lastGrind, setLastGrind] = useState<LastGrind | null>(null);
+  const { coffee_id: coffeeId, grinder_id: grinderId } = form.values;
+
+  useEffect(() => {
+    if (grindEdited.current) return;
+    // No coffee chosen yet, or a proposed new coffee: no history to draw on.
+    if (!/^\d+$/.test(coffeeId)) {
+      form.setFieldValue("grind_setting", "");
+      return;
+    }
+    let cancelled = false;
+    getLastGrind(Number(coffeeId), grinderId ? Number(grinderId) : undefined).then(
+      (last) => {
+        if (cancelled || grindEdited.current) return;
+        setLastGrind(last);
+        form.setFieldValue("grind_setting", last.grind_setting ?? "");
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-run only when coffee/grinder change; Mantine's form object isn't referentially stable
+  }, [coffeeId, grinderId]);
+
+  const grindHint =
+    lastGrind?.date &&
+    String(lastGrind.coffee_id) === coffeeId &&
+    lastGrind.grind_setting === form.values.grind_setting
+      ? `Last used for this coffee on ${dayjs(lastGrind.date).format("MMM D")}`
+      : undefined;
+
+  const grindInputProps = form.getInputProps("grind_setting");
+  const handleGrindChange = (event: ChangeEvent<HTMLInputElement>) => {
+    grindEdited.current = true;
+    grindInputProps.onChange(event);
+  };
+
   const applyCsvImport = ({ fields, new_coffee, notes }: ShotCsvImport) => {
     if (fields.date) form.setFieldValue("date", dayjs(fields.date).toDate());
     // Operator from the CSV wins; otherwise default by when the shot was pulled.
@@ -350,7 +404,9 @@ export default function NewShotPage() {
             <TextInput
               label="Grind Setting"
               placeholder="e.g. 8+5 1/2 or 19.5"
-              {...form.getInputProps("grind_setting")}
+              description={grindHint}
+              {...grindInputProps}
+              onChange={handleGrindChange}
             />
           </Grid.Col>
           <Grid.Col span={{ base: 12, sm: 6 }}>

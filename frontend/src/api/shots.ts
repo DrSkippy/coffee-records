@@ -1,4 +1,4 @@
-import type { Shot, ShotCsvImport } from "../types";
+import type { LastGrind, Shot, ShotCsvImport } from "../types";
 import api from "./client";
 
 interface ShotFilters {
@@ -12,6 +12,13 @@ interface ShotFilters {
 
 export const getShots = (filters: ShotFilters = {}) =>
   api.get<Shot[]>("/shots", { params: filters }).then((r) => r.data);
+
+export const getLastGrind = (coffeeId: number, grinderId?: number) =>
+  api
+    .get<LastGrind>("/shots/last-grind", {
+      params: { coffee_id: coffeeId, grinder_id: grinderId },
+    })
+    .then((r) => r.data);
 
 export const getMakers = () => api.get<string[]>("/shots/makers").then((r) => r.data);
 

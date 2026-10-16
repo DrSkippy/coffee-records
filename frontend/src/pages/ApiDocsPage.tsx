@@ -211,6 +211,12 @@ const sections: Section[] = [
         curl: `curl ${BASE}/api/shots/makers`,
       },
       {
+        method: "GET",
+        path: "/api/shots/last-grind",
+        description: "Most recent grind setting recorded for a coffee. Required: coffee_id. Optional: grinder_id (only shots on that grinder). Fields are null for a coffee's first shot.",
+        curl: `curl "${BASE}/api/shots/last-grind?coffee_id=3&grinder_id=1"`,
+      },
+      {
         method: "POST",
         path: "/api/shots/import-csv",
         description: "Parse a Brewmeo shot CSV (multipart/form-data, field: file) into New Shot form values, a proposed new coffee, notes, and Beanconqueror-style telemetry JSON. Writes nothing to the database.",

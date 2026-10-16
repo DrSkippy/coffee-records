@@ -181,3 +181,17 @@ class ShotCsvImportResponse(BaseModel):
     telemetry: dict[str, Any] | None = None
     telemetry_filename: str | None = None
     warnings: list[str]
+
+
+class LastGrindResponse(BaseModel):
+    """Most recent recorded grind setting for a coffee (and optional grinder).
+
+    ``grind_setting`` and the shot fields are None when no earlier shot of
+    the coffee recorded a grind (e.g. the first shot of a new bag).
+    """
+
+    coffee_id: int
+    grinder_id: int | None
+    grind_setting: str | None
+    shot_id: int | None
+    date: Date | None

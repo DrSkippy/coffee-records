@@ -422,6 +422,7 @@ Requests without a valid key return `401 Unauthorized`. Authentication is disabl
 | `GET` | `/api/shots` | List shots (newest first, max 50 by default) |
 | `POST` | `/api/shots` | Create a shot |
 | `GET` | `/api/shots/makers` | Distinct maker names from all shots, sorted |
+| `GET` | `/api/shots/last-grind?coffee_id=&grinder_id=` | Most recent grind setting recorded for a coffee (optionally on one grinder); all-null fields for a coffee's first shot. Used to default the New Shot grind setting. |
 | `POST` | `/api/shots/import-csv` | Parse a Brewmeo shot CSV into New Shot form values, a proposed coffee, notes, and telemetry JSON (`multipart/form-data`, field `file`). Writes nothing. |
 | `GET` | `/api/shots/<id>` | Get one shot |
 | `PUT` | `/api/shots/<id>` | Update a shot |

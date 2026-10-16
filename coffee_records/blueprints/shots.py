@@ -14,19 +14,26 @@ from coffee_records.blueprints.helpers import (
     get_storage,
     query_date,
     query_int,
+    require_query_int,
     require_upload,
 )
 from coffee_records.database import get_session
 from coffee_records.errors import NotFoundError, UnprocessableError
 from coffee_records.models.equipment import Grinder
 from coffee_records.models.shot import Shot
-from coffee_records.schemas.shot import ShotCreate, ShotResponse, ShotUpdate
+from coffee_records.schemas.shot import (
+    LastGrindResponse,
+    ShotCreate,
+    ShotResponse,
+    ShotUpdate,
+)
 from coffee_records.services.brewmeo_import import (
     BrewmeoImportError,
     build_import,
     parse_brewmeo_csv,
 )
 from coffee_records.services.grind_validation import validate_grind_setting
+from coffee_records.services.last_grind import find_last_grind_shot
 from coffee_records.services.storage import VIDEO_EXTENSIONS
 from coffee_records.services.telemetry import (
     TelemetryValidationError,
@@ -120,6 +127,34 @@ def list_makers() -> ResponseReturnValue:
         rows = session.query(Shot.maker).distinct().all()
     makers = sorted({name for (name,) in rows if name}, key=str.casefold)
     return jsonify(makers)
+
+
+@shots_bp.get("/last-grind")
+def last_grind() -> ResponseReturnValue:
+    """Return the most recent grind setting recorded for a coffee.
+
+    Used to default the New Shot form's grind setting. The first shot of a
+    coffee has no history, so every field except coffee_id/grinder_id is null.
+
+    Query params:
+        coffee_id (required): Coffee bag.
+        grinder_id (optional): Only consider shots on this grinder.
+
+    Returns:
+        JSON LastGrindResponse.
+    """
+    coffee_id = require_query_int("coffee_id")
+    grinder_id = query_int("grinder_id")
+    with get_session() as session:
+        shot = find_last_grind_shot(session, coffee_id, grinder_id)
+        response = LastGrindResponse(
+            coffee_id=coffee_id,
+            grinder_id=grinder_id,
+            grind_setting=shot.grind_setting if shot else None,
+            shot_id=shot.id if shot else None,
+            date=shot.date if shot else None,
+        )
+    return jsonify(response.model_dump(mode="json"))
 
 
 @shots_bp.get("")

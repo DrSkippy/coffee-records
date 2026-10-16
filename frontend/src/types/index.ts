@@ -85,6 +85,14 @@ export interface Shot {
 
 export type NewCoffee = Omit<Coffee, "id" | "image_filename" | "created_at">;
 
+export interface LastGrind {
+  coffee_id: number;
+  grinder_id: number | null;
+  grind_setting: string | null;
+  shot_id: number | null;
+  date: string | null;
+}
+
 export interface ShotCsvImport {
   source: string;
   fields: {
