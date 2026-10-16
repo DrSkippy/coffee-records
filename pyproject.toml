@@ -35,7 +35,7 @@ plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
-addopts = "--cov=coffee_records --cov=bin --cov-report=term-missing --cov-fail-under=60"
+addopts = "--cov=coffee_records --cov=bin --cov-report=term-missing --cov-fail-under=85"
 
 [build-system]
 requires = ["poetry-core"]

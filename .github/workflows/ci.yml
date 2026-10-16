@@ -20,6 +20,6 @@ jobs:
       - name: black
         run: poetry run black --check coffee_records bin test
       - name: mypy
-        run: poetry run mypy coffee_records bin
+        run: poetry run mypy coffee_records bin test
       - name: pytest
         run: poetry run pytest

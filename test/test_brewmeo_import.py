@@ -20,11 +20,11 @@ from coffee_records.services.brewmeo_import import (
     build_import,
     compose_notes,
     derive_flow,
-    format_brew_time,
     parse_brewmeo_csv,
     to_telemetry_json,
     trim_weight_disturbance,
 )
+from coffee_records.services.brew_time import format_brew_time
 from coffee_records.services.matching import best_equipment_match
 from coffee_records.services.telemetry import (
     extract_thumbnail_series,
