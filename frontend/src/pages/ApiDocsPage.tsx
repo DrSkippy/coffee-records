@@ -161,17 +161,17 @@ const sections: Section[] = [
           { name: "maker", type: "string", required: true, description: "Who pulled the shot" },
           { name: "coffee_id", type: "integer", required: false, description: "Coffee bag ID" },
           { name: "dose_weight", type: "float", required: false, description: "Dose in grams" },
-          { name: "extraction_time", type: "float", required: false, description: "Target extraction time (seconds)" },
-          { name: "extraction_delta", type: "float", required: false, description: "Actual deviation from target (default 0)" },
+          { name: "extraction_time", type: "float", required: false, description: "Shot time in seconds: start of the stream to pump off" },
+          { name: "extraction_delta", type: "float", required: false, description: "Estimated seconds to add (+) or subtract (−) for ideal extraction (default 0)" },
           { name: "final_weight", type: "float", required: false, description: "Yield in grams" },
           { name: "grind_setting", type: "string", required: false, description: "Grinder setting value" },
           { name: "grinder_id", type: "integer", required: false, description: "Grinder ID" },
           { name: "device_id", type: "integer", required: false, description: "Brewing device ID" },
           { name: "scale_id", type: "integer", required: false, description: "Scale ID" },
-          { name: "drink_type", type: "enum", required: false, description: "americano | latte | cappuccino | drip | other" },
-          { name: "grinder_temp_before", type: "float", required: false, description: "Grinder temp before (°C)" },
-          { name: "grinder_temp_after", type: "float", required: false, description: "Grinder temp after (°C)" },
-          { name: "pre_infusion_time", type: "string", required: false, description: "Pre-infusion duration" },
+          { name: "drink_type", type: "enum", required: false, description: "americano | latte | cappuccino | drip | aeropress" },
+          { name: "grinder_temp_before", type: "float", required: false, description: "Grinder temp before (°F)" },
+          { name: "grinder_temp_after", type: "float", required: false, description: "Grinder temp after (°F)" },
+          { name: "pre_infusion_time", type: "string", required: false, description: "Pre-infusion: free text, e.g. a routine like \"5+3\" or seconds (\"9.9\", as filled by CSV import)" },
           { name: "wedge", type: "boolean", required: false, description: "Wedge used (default false)" },
           { name: "shaker", type: "boolean", required: false, description: "Shaker used (default false)" },
           { name: "wdt", type: "boolean", required: false, description: "WDT used (default false)" },
@@ -219,7 +219,7 @@ const sections: Section[] = [
       {
         method: "POST",
         path: "/api/shots/import-csv",
-        description: "Parse a Brewmeo shot CSV (multipart/form-data, field: file) into New Shot form values, a proposed new coffee, notes, and Beanconqueror-style telemetry JSON. Writes nothing to the database.",
+        description: "Parse a Brewmeo shot CSV (multipart/form-data, field: file) into New Shot form values, a proposed new coffee, notes, and Beanconqueror-style telemetry JSON. Pre-infusion and extraction time come from the telemetry phase estimate (null when it can't be estimated, e.g. a truncated recording); the estimates are also added to the notes. Writes nothing to the database.",
         curl: `curl -X POST ${BASE}/api/shots/import-csv \\\n  -F "file=@My shot #19.csv"`,
       },
       {
@@ -369,6 +369,24 @@ const sections: Section[] = [
     ],
   },
   {
+    label: "Defaults",
+    value: "defaults",
+    endpoints: [
+      {
+        method: "GET",
+        path: "/api/defaults",
+        description: "Current New Shot form defaults. Creates the singleton row from the config.yaml seed values on first call.",
+        curl: `curl ${BASE}/api/defaults`,
+      },
+      {
+        method: "PUT",
+        path: "/api/defaults",
+        description: "Update the New Shot form defaults (same fields as the GET response: maker, dose_weight, pre_infusion_time, extraction_time, final_weight, drink_type, grinder_temp_before, wedge, shaker, wdt, flow_taper).",
+        curl: `curl -X PUT ${BASE}/api/defaults \\\n  -H "Content-Type: application/json" \\\n  -d '{"dose_weight":19,"pre_infusion_time":"5+3"}'`,
+      },
+    ],
+  },
+  {
     label: "Reports",
     value: "reports",
     endpoints: [
@@ -397,6 +415,18 @@ const sections: Section[] = [
           { name: "device_id", type: "integer", required: false, description: "Filter by brewing device" },
         ],
         curl: `curl "${BASE}/api/reports/shots-per-day?date_from=2026-01-01"`,
+      },
+      {
+        method: "GET",
+        path: "/api/reports/shots-per-grinder",
+        description: "Shot count per grinder, sorted by count descending. The grinder is the grouping key, so grinder_id is not accepted.",
+        params: [
+          { name: "date_from", type: "date (ISO)", required: false, description: "Inclusive start date" },
+          { name: "date_to", type: "date (ISO)", required: false, description: "Inclusive end date" },
+          { name: "coffee_id", type: "integer", required: false, description: "Filter by coffee" },
+          { name: "device_id", type: "integer", required: false, description: "Filter by brewing device" },
+        ],
+        curl: `curl "${BASE}/api/reports/shots-per-grinder?date_from=2026-01-01"`,
       },
       {
         method: "GET",
@@ -457,7 +487,7 @@ const sections: Section[] = [
           "Fit (or re-fit) the multivariate grind model for a grinder using alternating OLS. " +
           "The model equation is: grind = a0·(temp−65) + a2·(time−target) + a3·(dose−20) + " +
           "a4·age_days + a5·(yield−2·dose) + c(coffee). " +
-          "Training uses americano, latte, and cappuccino shots only; excludes first-day shots per coffee. " +
+          "Training uses americano, latte, and cappuccino shots only; excludes first-day shots per coffee and shots with Flow Taper checked. " +
           "Warm-starts intercepts from the most recent prior training. " +
           "Returns 201 with the training record on success.",
         params: [
