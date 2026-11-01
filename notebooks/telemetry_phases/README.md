@@ -1,7 +1,7 @@
 # Telemetry phase estimation: pre-infusion and shot time
 
-**Status:** exploration only. Nothing in the application has changed.
-Decisions from the first review (2026-11-01) are recorded in §7.
+**Status:** implemented in v0.11.0 (2026-11-01): see §8. Decisions from
+the first review are recorded in §7; the one-time data remediation is in §9.
 **Data:** all 185 shots with telemetry as of 2026-11-01.
 
 ## Goal
@@ -250,24 +250,38 @@ the timer was used on those early profiled shots (§5).
   Flow Taper shots: shots 653, 676 and 680 are probably excluded wrongly,
   and 290 and 295 are probably included wrongly.
 
-## 8. Implementation sketch (pending approval)
+## 8. Implementation (v0.11.0)
 
-- `coffee_records/services/telemetry_phases.py`: port `phase_fit.py` with
-  thresholds in `config.yaml` (`telemetry_phases:` block). The Pydantic
-  result model would hold `pre_infusion_s`, `shot_time_s`, the `t_*`
-  boundaries, `pump_on_imputed`, `profiled_detected`, `end_ratio`,
-  `plateau_rmse` and `flags`. Truncated or pressure-less recordings return
-  n/a (None) times with a reason flag.
-- Compute the phases on telemetry upload. Either store them in new nullable
-  `shots` columns, or compute them on read from the stored JSON; the fit
-  takes about 30 ms per shot.
-- Add a `bin/` backfill script for existing shots, in the style of
-  `backfill_telemetry_thumbnails.py`.
-- Show the phase markers in `TelemetryModal`. Add the fitted pre-infusion
-  (marked when imputed) and shot time to the shot card and reports.
-- Tests: use synthetic piecewise curves with known breakpoints (normal,
-  profiled, auto-start and truncated shapes), plus the existing
-  Beanconqueror fixture.
+- `coffee_records/services/telemetry_phases.py` ports `phase_fit.py`. Its
+  thresholds are the `telemetry_phases` block of `config.yaml`, and the
+  result model is `TelemetryPhases` (`coffee_records/schemas/telemetry.py`).
+  Truncated or pressure-less recordings return null times, with the reason
+  in `issues`.
+- **Brewmeo CSV import** fills Pre-infusion and Extraction time from the
+  estimate and appends a "Telemetry estimates (curve fit)" block to the
+  notes. When the estimate is n/a, both fields are left empty and a warning
+  is shown.
+- **`GET /api/shots/<id>/telemetry/phases`** computes the estimate from the
+  stored file on request (about 30 ms); nothing new is stored on the shot.
+  The telemetry modal shows it under the chart.
+- Tests: `test/test_telemetry_phases.py` uses synthetic shots with known
+  boundaries (natural, auto-start, truncated, profiled, no pressure).
+- Open questions A and B (§7) are still open: the profile detector is shown
+  in the modal but doesn't set or check the Flow Taper flag.
+
+## 9. One-time remediation (applied 2026-11-01)
+
+`remediation/proposal.yaml` lists every reviewed change with its reason;
+`remediation/apply_remediation.py` applied the approved ones. Each changed
+shot got an audit line in its notes, and the previous values were backed up
+to a local CSV (not committed).
+
+- **Extraction time corrected on 13 shots:** 289, 330, 363, 405, 431, 465,
+  466, 640, 646, 681, 697, 709, 713 (a typo, uncorrected Brewmeo recording
+  lengths, and timers started in pre-infusion or at the ramp).
+- **Flow Taper cleared on 3 shots:** 653, 676, 680 (natural declines).
+- **Declined in review:** 458, 569, 656, 661 (timer started after flow was
+  established), plus the low-confidence 606 and Flow Taper on 290, 295, 681.
 
 ## Reproducing
 
@@ -277,6 +291,10 @@ Load database credentials with direnv, then run from the repo root:
 poetry run python notebooks/telemetry_phases/explore.py \
     --telemetry-dir /var/www/html/resources/coffee/telemetry
 ```
+
+The committed `results/` and `figures/` were computed before the §9
+remediation, so they compare against the original logged times; re-running
+uses the corrected values and shifts the agreement figures slightly.
 
 The script writes `results/phases.csv` (one row per shot, with all
 boundaries, profile features and flags), `results/summary.json` and

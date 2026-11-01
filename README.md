@@ -215,7 +215,7 @@ The command skips existing PNGs, reports generated/skipped/failed counts, and ex
 
 ## Utility scripts
 
-Run these from the project root with `poetry run python bin/<script>.py`. Only `backfill_telemetry_thumbnails.py` is copied into the Docker image.
+Run the Python scripts from the project root with `poetry run python bin/<script>.py`. Only `backfill_telemetry_thumbnails.py` is copied into the Docker image.
 
 | Script | Purpose |
 |---|---|
@@ -223,9 +223,17 @@ Run these from the project root with `poetry run python bin/<script>.py`. Only `
 | `backfill_telemetry_thumbnails.py` | Generate missing telemetry PNG previews; `--force` regenerates all |
 | `import_ocr_data.py` | Import shots and coffees from OCR'd handwritten log sheets (`coffee_roasters.csv`, `coffee_shots.csv`). Options: `--input-dir` (default `import_data/1/files`), `--coffees-file`, `--shots-file`, `--settings` (default `ocr_import.yaml`), `--year`, `--dry-run`, `--verbose` |
 | `edit_telemetry.py` | Plot and edit a Beanconqueror telemetry JSON file: trim with `--start-time`/`--end-time`, boxcar-smooth with `--weight`/`--flow`/`--pressure N`, and name the output after a shot with `--shot-id`. Writes `<input>_edited.json` and never touches the database. |
+| `capture_screenshots.mjs` | Node 22+, not Python: `node bin/capture_screenshots.mjs --base http://127.0.0.1:5173 --csv "<Brewmeo export>.csv" [name ...]`. Recaptures `docs/screenshots/` with headless Chrome from a running dev frontend, opening the telemetry modal and a CSV import (nothing is saved). `--timezone` (default Europe/London) puts New Shot after 9:30 am. |
 | `repair_duplicate_coffees.py` | One-off: merge the known duplicate coffees created by the OCR import, moving their shots to the lower-ID coffee. Dry run by default; `--apply` writes. |
 
 Always run `import_ocr_data.py` with `--dry-run` first.
+
+### Investigations (`notebooks/`)
+
+Exploration code lives in `notebooks/` and is not part of the app or the CI checks.
+
+- `notebooks/telemetry_phases/`: the analysis behind the [telemetry phase estimates](#telemetry-phase-estimates). `README.md` is the report; `explore.py` re-runs it over every shot with telemetry (needs database credentials and the telemetry directory) and rewrites `results/` and `figures/`.
+- `notebooks/telemetry_phases/remediation/`: the one-time correction of historical extraction times and Flow Taper flags (applied 2026-11-01). `proposal.yaml` lists every reviewed change; `apply_remediation.py` dry-runs by default, and with `--apply` backs up the current values to a local CSV first.
 
 ---
 
@@ -278,7 +286,7 @@ Filter the list by maker using the dropdown at the top. **Import CSV** starts a 
 
 Clicking a telemetry preview opens the full interactive chart of flow, pressure and weight:
 
-![Shot telemetry modal showing flow, pressure and weight over time](docs/screenshots/telemetry.png)
+![Shot telemetry modal: flow, pressure and weight over time, with the fitted pre-infusion, shot time and pressure profile below the chart](docs/screenshots/telemetry.png)
 
 Below the chart, **Estimates from telemetry** shows the fitted pre-infusion and shot time (with the logged extraction time for comparison), whether the pressure followed a natural decline or a modulated profile, and the fitted phase boundaries (see [Telemetry phase estimates](#telemetry-phase-estimates)).
 
@@ -303,7 +311,7 @@ The thresholds live in the `telemetry_phases` block of `config.yaml`. The invest
 
 Form to log a shot. All fields except date and maker are optional. The form opens pre-filled with defaults, so you only enter what changed.
 
-![New Shot form after 9:30 am: Maker is Sara, so the drink defaults to cappuccino, and the grind setting is filled from the coffee's last shot](docs/screenshots/new-shot.png)
+![New Shot form after 9:30 am: Maker is Sara, so the drink defaults to cappuccino; the grind setting is empty because the newest bag has no shots yet](docs/screenshots/new-shot.png)
 
 The dose, weights, times, temperature, drink and prep-toggle defaults below are first-run seed values from `config.yaml`'s `shot_defaults_seed`. After that, the form uses whatever is saved on the [Defaults](#defaults) page.
 
@@ -311,7 +319,7 @@ The dose, weights, times, temperature, drink and prep-toggle defaults below are 
 |---|---|---|
 | Date | Today | |
 | Maker | Scott before 9:30 am, Sara from 9:30 am | Dropdown of Scott, Sara and anyone who has logged a shot; type a new name and pick **Add “…”** to add someone |
-| Coffee | Most recently entered | Searchable select from the coffees list |
+| Coffee | Newest roast date (the first coffee in the list) | Searchable select from the coffees list |
 | Drink type | cappuccino when Maker is Sara; otherwise the Defaults page value (americano) | Follows the Maker until you pick a drink; a drink you chose is never overwritten. The rule lives in `frontend/src/utils/drinks.ts` |
 | Grind setting | Last grind recorded for the chosen coffee on the chosen grinder; empty for a coffee's first shot | Refills when the coffee or grinder changes until you type a value; shows the date it was last used |
 | Grinder | Option-O (matched by name) | Searchable select |
@@ -350,6 +358,8 @@ Equipment defaults (grinder, machine, scale) are resolved by substring match on 
 
 Remaining metadata (basket, tamper, ratings, temperatures, average flow…) is written to **Notes**, followed by a **Telemetry estimates (curve fit)** block with the pre-infusion, shot time, pressure profile and recording length. Record IDs and export boilerplate are left out of the notes.
 
+![New Shot form after importing a Brewmeo CSV: pre-infusion and extraction time filled from the curve fit, the estimates at the end of Notes, a proposed new coffee, and warnings about a scale disturbance](docs/screenshots/csv-import.png)
+
 The `moment` rows are converted to Beanconqueror-style telemetry JSON and attached as the Telemetry file:
 - Weight goes to `weight`, pressure to `pressureFlow`, temperature to `temperatureFlow`.
 - A flow series (`realtimeFlow`) is derived from the smoothed weight curve.
@@ -380,7 +390,7 @@ Three tabs — **Grinders**, **Machines**, and **Scales** — each with full cre
 
 ### Shot Planner
 
-Grind setting recommendations powered by a multivariate model trained on your shot history. Select a grinder and coffee, enter the current grinder temperature, and the planner predicts the recommended starting setting.
+Grind setting recommendations powered by a multivariate model trained on your shot history. Select a grinder and coffee, enter the current grinder temperature, and the planner predicts the recommended starting setting. The grinder and coffee default to those of the most recently recorded shot.
 
 The model fits the following equation per grinder using a within-group (fixed effects) estimator:
 
@@ -403,7 +413,7 @@ Features that do not vary within any single coffee group (e.g. temperature alway
 
 The **Retrain Model** button triggers a fresh training run and immediately refreshes all plots.
 
-![Shot Planner with a recommended grind, the fitted model equation, and the three plots](docs/screenshots/planner.png)
+![Shot Planner opened on the latest shot's grinder and coffee. That bag is newer than the last training run, so it asks for a retrain instead of recommending a grind](docs/screenshots/planner.png)
 
 Training uses only americano, latte, and cappuccino shots. Drip and aeropress shots are excluded, as are the first day of shots for each coffee bag (dialing-in shots). Shots pulled with shot profiling (**Flow Taper** checked) are also excluded, since a profiled flow curve changes the grind/extraction relationship; only shots explicitly marked not profiled are used (the rule lives in `coffee_records/services/grind_model/eligibility.py`). Each coffee's dialing-in day is still taken from all of its shots. Every training run logs its candidate, eligible and excluded counts.
 
@@ -500,7 +510,7 @@ Requests without a valid key return `401 Unauthorized`. Authentication is disabl
 | `POST` | `/api/shots` | Create a shot |
 | `GET` | `/api/shots/makers` | Distinct maker names from all shots, sorted |
 | `GET` | `/api/shots/last-grind?coffee_id=&grinder_id=` | Most recent grind setting recorded for a coffee (optionally on one grinder); all-null fields for a coffee's first shot. Used to default the New Shot grind setting. |
-| `POST` | `/api/shots/import-csv` | Parse a Brewmeo shot CSV into New Shot form values, a proposed coffee, notes, and telemetry JSON (`multipart/form-data`, field `file`). Writes nothing. |
+| `POST` | `/api/shots/import-csv` | Parse a Brewmeo shot CSV into New Shot form values, a proposed coffee, notes, and telemetry JSON (`multipart/form-data`, field `file`). `pre_infusion_time` and `extraction_time` come from the [telemetry phase estimate](#telemetry-phase-estimates) and are null when it is n/a. Writes nothing. |
 | `GET` | `/api/shots/<id>` | Get one shot |
 | `PUT` | `/api/shots/<id>` | Update a shot |
 | `DELETE` | `/api/shots/<id>` | Delete a shot and its video, telemetry JSON, and telemetry thumbnail |

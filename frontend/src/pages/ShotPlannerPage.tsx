@@ -26,6 +26,7 @@ import {
 import { useEffect, useState } from "react";
 import { getCoffees } from "../api/coffees";
 import { getGrinders } from "../api/equipment";
+import { getShots } from "../api/shots";
 import { getGrindModelParams, trainGrindModel } from "../api/reports";
 import type { Coffee, Grinder, GrindModelParamsResult } from "../types";
 
@@ -132,19 +133,24 @@ export default function ShotPlannerPage() {
   const [retraining, setRetraining] = useState(false);
   const [retrainError, setRetrainError] = useState<string | null>(null);
 
-  useEffect(() => {
-    Promise.all([getCoffees(), getGrinders()]).then(([c, g]) => {
-      setCoffees(c);
-      setGrinders(g);
-    });
-  }, []);
-
   const handleGrinderChange = (value: string | null) => {
     setGrinderId(value);
     setParams(null);
     setModelError(null);
     setLoadingModel(value !== null);
   };
+
+  // Default the selections to the grinder and coffee of the most recent shot.
+  useEffect(() => {
+    Promise.all([getCoffees(), getGrinders(), getShots({ limit: 1 })]).then(([c, g, [latest]]) => {
+      setCoffees(c);
+      setGrinders(g);
+      if (latest?.grinder_id != null && g.some((x) => x.id === latest.grinder_id))
+        handleGrinderChange(String(latest.grinder_id));
+      if (latest?.coffee_id != null && c.some((x) => x.id === latest.coffee_id))
+        setCoffeeId(String(latest.coffee_id));
+    });
+  }, []);
 
   useEffect(() => {
     if (!grinderId) return;
