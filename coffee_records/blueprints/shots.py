@@ -35,6 +35,7 @@ from coffee_records.services.brewmeo_import import (
 from coffee_records.services.grind_validation import validate_grind_setting
 from coffee_records.services.last_grind import find_last_grind_shot
 from coffee_records.services.storage import VIDEO_EXTENSIONS
+from coffee_records.services.telemetry_phases import estimate_phases_from_payload
 from coffee_records.services.telemetry import (
     TelemetryValidationError,
     render_telemetry_thumbnail,
@@ -238,6 +239,7 @@ def import_shot_csv() -> ResponseReturnValue:
             upload.filename or "",
             brewmeo=config.brewmeo,
             matching=config.matching,
+            phase_settings=config.telemetry_phases,
         )
     return jsonify(result.model_dump(mode="json"))
 
@@ -386,6 +388,33 @@ def upload_shot_telemetry(shot_id: int) -> ResponseReturnValue:
         if previous:
             storage.delete_telemetry(previous)
         return _shot_response(session, shot_id)
+
+
+@shots_bp.get("/<int:shot_id>/telemetry/phases")
+def get_shot_telemetry_phases(shot_id: int) -> ResponseReturnValue:
+    """Estimate pre-infusion and shot time from a shot's stored telemetry.
+
+    Args:
+        shot_id: Shot primary key.
+
+    Returns:
+        JSON TelemetryPhases, 404 if the shot or its telemetry file is
+        missing, or 422 if the stored telemetry is unusable.
+    """
+    with get_session() as session:
+        filename = get_or_404(session, Shot, shot_id, "Shot").telemetry_filename
+    if not filename:
+        raise NotFoundError(f"Shot {shot_id} has no telemetry")
+    path = get_storage().telemetry_dir / filename
+    try:
+        payload = path.read_bytes()
+    except FileNotFoundError:
+        raise NotFoundError(f"Telemetry file for shot {shot_id} is missing") from None
+    try:
+        phases = estimate_phases_from_payload(payload, get_config().telemetry_phases)
+    except TelemetryValidationError as exc:
+        raise UnprocessableError(str(exc)) from exc
+    return jsonify(phases.model_dump(mode="json"))
 
 
 @shots_bp.delete("/<int:shot_id>/telemetry")

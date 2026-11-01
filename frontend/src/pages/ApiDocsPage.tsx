@@ -229,6 +229,12 @@ const sections: Section[] = [
         curl: `curl -X POST ${BASE}/api/shots/42/telemetry \\\n  -F "file=@flowprofile.json"`,
       },
       {
+        method: "GET",
+        path: "/api/shots/:id/telemetry/phases",
+        description: "Estimate pre-infusion and shot time (seconds) from the shot's stored telemetry by curve fitting. Times are null when they can't be estimated; issues explains why (e.g. truncated_start).",
+        curl: `curl ${BASE}/api/shots/42/telemetry/phases`,
+      },
+      {
         method: "DELETE",
         path: "/api/shots/:id/telemetry",
         description: "Remove the telemetry file for a shot.",

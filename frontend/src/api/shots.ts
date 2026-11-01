@@ -1,4 +1,4 @@
-import type { LastGrind, Shot, ShotCsvImport } from "../types";
+import type { LastGrind, Shot, ShotCsvImport, TelemetryPhases } from "../types";
 import api from "./client";
 
 interface ShotFilters {
@@ -57,6 +57,9 @@ export const uploadShotTelemetry = (id: number, file: File) => {
   form.append("file", file);
   return api.post<Shot>(`/shots/${id}/telemetry`, form).then((r) => r.data);
 };
+
+export const getShotTelemetryPhases = (id: number) =>
+  api.get<TelemetryPhases>(`/shots/${id}/telemetry/phases`).then((r) => r.data);
 
 export const deleteShotTelemetry = (id: number) =>
   api.delete<Shot>(`/shots/${id}/telemetry`).then((r) => r.data);

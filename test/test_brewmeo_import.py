@@ -216,7 +216,12 @@ def test_build_import_new_bag_when_roast_date_differs(
     assert result.fields.date == date(2026, 9, 26)
     assert result.fields.recorded_at == datetime(2026, 9, 26, 6, 29, 10, 628000)
     assert result.fields.maker is None
-    assert result.fields.extraction_time == 37.9
+    # Times come from the telemetry estimate, not the CSV recording length.
+    assert result.fields.extraction_time == pytest.approx(26.5, abs=0.5)
+    assert result.fields.pre_infusion_time is not None
+    assert float(result.fields.pre_infusion_time) == pytest.approx(8.0, abs=0.5)
+    assert "Telemetry estimates (curve fit):" in result.notes
+    assert "Recording length: 37.9 s" in result.notes
     assert result.fields.grind_setting == "0.8"
     assert result.fields.dose_weight is None
     assert result.telemetry is not None
@@ -244,6 +249,21 @@ def test_build_import_warns_on_unknown_equipment(csv_text: str) -> None:
     assert any("Grinder 'Lagom Option O p80'" in w for w in result.warnings)
     assert "Grinder Name: Lagom Option O p80" in result.notes
     assert "Espresso Machine Name: ECM Synchronika II" in result.notes
+
+
+def test_build_import_leaves_times_empty_when_recording_is_truncated(
+    db: Session, csv_text: str
+) -> None:
+    """A recording that starts mid-shot gives n/a times and a warning."""
+    shot = parse_brewmeo_csv(csv_text)
+    shot.pressure = [(t, max(p, 8.5)) for t, p in shot.pressure]
+    result = build_import(db, shot, "shot.csv")
+    assert result.fields.extraction_time is None
+    assert result.fields.pre_infusion_time is None
+    assert "Pre-infusion and shot time: n/a (recording started mid-shot" in (
+        result.notes
+    )
+    assert any("could not be estimated" in w for w in result.warnings)
 
 
 def test_compose_notes_includes_only_unmatched_info(csv_text: str) -> None:

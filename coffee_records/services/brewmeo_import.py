@@ -20,17 +20,23 @@ from typing import Any
 import numpy as np
 from sqlalchemy.orm import Session
 
-from coffee_records.config import BrewmeoConfig, MatchingConfig
+from coffee_records.config import (
+    BrewmeoConfig,
+    MatchingConfig,
+    TelemetryPhasesConfig,
+)
 from coffee_records.models.coffee import Coffee, RoastLevel
 from coffee_records.models.equipment import BrewingDevice, Grinder
 from coffee_records.schemas.coffee import CoffeeCreate
 from coffee_records.schemas.shot import ShotCsvImportFields, ShotCsvImportResponse
+from coffee_records.schemas.telemetry import TelemetryPhases
 from coffee_records.services.brew_time import format_brew_time
 from coffee_records.services.matching import best_equipment_match, is_same_beans
 from coffee_records.services.telemetry import (
     TelemetryValidationError,
     extract_thumbnail_series,
 )
+from coffee_records.services.telemetry_phases import describe_phases, estimate_phases
 
 REQUIRED_COLUMNS = frozenset(
     {
@@ -511,8 +517,15 @@ def build_import(
     source_file: str,
     brewmeo: BrewmeoConfig | None = None,
     matching: MatchingConfig | None = None,
+    phase_settings: TelemetryPhasesConfig | None = None,
 ) -> ShotCsvImportResponse:
     """Map a parsed CSV onto shot form values, coffee, equipment and notes.
+
+    Pre-infusion and extraction (shot) time come from the telemetry phase
+    estimate, not the CSV: Brewmeo leaves pre-infusion empty and reports the
+    recording length as extraction time. When the estimate is unavailable
+    (e.g. a recording that started mid-shot) both fields are left empty and
+    a warning says why.
 
     Args:
         session: Read-only database session used for matching.
@@ -520,6 +533,7 @@ def build_import(
         source_file: Original upload filename.
         brewmeo: Signal-processing settings (defaults to built-in settings).
         matching: Fuzzy-match thresholds (defaults to built-in settings).
+        phase_settings: Phase-estimate calibration (defaults to built-in).
 
     Returns:
         The import response; nothing is written to the database.
@@ -568,7 +582,31 @@ def build_import(
                 f"trace ({trace_final:.1f} g at the end of the shot); check Final Weight"
             )
 
-    extraction = shot.positive("Extraction time")
+    telemetry: dict[str, Any] | None = to_telemetry_json(shot, source_file, brewmeo)
+    phases: TelemetryPhases | None = None
+    try:
+        series = extract_thumbnail_series(json.dumps(telemetry).encode())
+    except TelemetryValidationError as exc:
+        warnings.append(f"No telemetry attached: {exc}")
+        telemetry = None
+    else:
+        phases = estimate_phases(series, phase_settings)
+
+    notes = compose_notes(shot, consumed)
+    if phases is not None:
+        notes_lines = describe_phases(phases)
+        recording = shot.positive("Extraction time")
+        if recording is not None:
+            notes_lines.append(f"Recording length: {recording:.1f} s")
+        notes = f"{notes}\n\n" + "\n".join(notes_lines)
+    pre_infusion = phases.pre_infusion_s if phases else None
+    shot_time = phases.shot_time_s if phases else None
+    if pre_infusion is None or shot_time is None:
+        warnings.append(
+            "Pre-infusion and/or shot time could not be estimated from the "
+            "telemetry; enter them by hand"
+        )
+
     shot_date = shot.when("Date")
     fields = ShotCsvImportFields(
         date=shot_date.date() if shot_date else None,
@@ -576,26 +614,19 @@ def build_import(
         maker=shot.text("Operator"),
         coffee_id=coffee_id,
         dose_weight=shot.positive("Dose"),
-        pre_infusion_time=shot.text("Preinfusion Time"),
-        extraction_time=round(extraction, 1) if extraction is not None else None,
+        pre_infusion_time=f"{pre_infusion:.1f}" if pre_infusion is not None else None,
+        extraction_time=shot_time,
         final_weight=final_weight,
         grind_setting=shot.text("Grinder Setting"),
         grinder_id=grinder_id,
         device_id=device_id,
     )
 
-    telemetry: dict[str, Any] | None = to_telemetry_json(shot, source_file, brewmeo)
-    try:
-        extract_thumbnail_series(json.dumps(telemetry).encode())
-    except TelemetryValidationError as exc:
-        warnings.append(f"No telemetry attached: {exc}")
-        telemetry = None
-
     return ShotCsvImportResponse(
         source=source_file,
         fields=fields,
         new_coffee=new_coffee,
-        notes=compose_notes(shot, consumed),
+        notes=notes,
         telemetry=telemetry,
         telemetry_filename=_safe_filename(shot.text("Name")) if telemetry else None,
         warnings=warnings,
