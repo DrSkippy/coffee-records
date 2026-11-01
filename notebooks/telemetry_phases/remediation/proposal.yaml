@@ -135,36 +135,40 @@ changes:
   field: extraction_time
   current: 23.0
   proposed: 30.2
-  recommend: true
+  recommend: false
   confidence: medium
-  reason: Logged 23 s starts about 7 s after the cup weight is visibly rising; likely mis-entered
+  reason: Logged 23 s starts about 7 s after the cup weight is visibly rising; likely mis-entered (declined
+    in review 2026-11-01)
 - shot_id: 569
   date: '2026-08-29'
   maker: Scott
   field: extraction_time
   current: 28.0
   proposed: 37.0
-  recommend: true
+  recommend: false
   confidence: medium
-  reason: Slow start; logged time begins about 9 s after the stream is established
+  reason: Slow start; logged time begins about 9 s after the stream is established (declined in review
+    2026-11-01)
 - shot_id: 656
   date: '2026-10-04'
   maker: Scott
   field: extraction_time
   current: 42.0
   proposed: 47.8
-  recommend: true
+  recommend: false
   confidence: medium
-  reason: Long slow drip; logged time begins about 6 s after the fitted stream start
+  reason: Long slow drip; logged time begins about 6 s after the fitted stream start (declined in review
+    2026-11-01)
 - shot_id: 661
   date: '2026-10-05'
   maker: Scott
   field: extraction_time
   current: 35.0
   proposed: 41.6
-  recommend: true
+  recommend: false
   confidence: medium
-  reason: Long slow drip; logged time begins about 7 s after the fitted stream start
+  reason: Long slow drip; logged time begins about 7 s after the fitted stream start (declined in review
+    2026-11-01)
 - shot_id: 606
   date: '2026-09-13'
   maker: Scott
