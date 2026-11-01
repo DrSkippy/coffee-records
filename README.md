@@ -380,7 +380,7 @@ Three tabs — **Grinders**, **Machines**, and **Scales** — each with full cre
 
 ### Shot Planner
 
-Grind setting recommendations powered by a multivariate model trained on your shot history. Select a grinder and coffee, enter the current grinder temperature, and the planner predicts the recommended starting setting.
+Grind setting recommendations powered by a multivariate model trained on your shot history. Select a grinder and coffee, enter the current grinder temperature, and the planner predicts the recommended starting setting. The grinder and coffee default to those of the most recently recorded shot.
 
 The model fits the following equation per grinder using a within-group (fixed effects) estimator:
 
