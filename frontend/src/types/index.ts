@@ -115,6 +115,32 @@ export interface ShotCsvImport {
   warnings: string[];
 }
 
+export type PhaseIssue =
+  | "no_pressure"
+  | "truncated_start"
+  | "no_pump_on"
+  | "no_flow_on"
+  | "no_pump_off"
+  | "low_peak_pressure"
+  | "flow_before_ramp";
+
+/** Pre-infusion and shot time fitted from a shot's telemetry (seconds). */
+export interface TelemetryPhases {
+  pre_infusion_s: number | null;
+  shot_time_s: number | null;
+  t_pump_on: number | null;
+  t_ramp: number | null;
+  t_flow_on: number | null;
+  t_pump_off: number | null;
+  pump_on_imputed: boolean;
+  recording_start_bar: number | null;
+  peak_pressure_bar: number | null;
+  profiled: boolean | null;
+  end_ratio: number | null;
+  plateau_rmse_bar: number | null;
+  issues: PhaseIssue[];
+}
+
 export interface DoseYieldPoint {
   date: string;
   shot_id: number;

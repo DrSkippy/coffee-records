@@ -272,7 +272,7 @@ export default function NewShotPage() {
     drinkInputProps.onChange(value ?? "");
   };
 
-  const applyCsvImport = ({ fields, new_coffee, notes }: ShotCsvImport) => {
+  const applyCsvImport = ({ fields, new_coffee, notes, telemetry }: ShotCsvImport) => {
     if (fields.date) form.setFieldValue("date", dayjs(fields.date).toDate());
     // Operator from the CSV wins; otherwise default by when the shot was pulled.
     if (fields.maker) form.setFieldValue("maker", fields.maker);
@@ -280,8 +280,13 @@ export default function NewShotPage() {
       form.setFieldValue("maker", defaultMakerAt(dayjs(fields.recorded_at).toDate()));
     if (fields.dose_weight) form.setFieldValue("dose_weight", oneDecimal(fields.dose_weight));
     if (fields.final_weight) form.setFieldValue("final_weight", oneDecimal(fields.final_weight));
-    if (fields.extraction_time) form.setFieldValue("extraction_time", fields.extraction_time);
-    if (fields.pre_infusion_time) form.setFieldValue("pre_infusion_time", fields.pre_infusion_time);
+    // Pre-infusion and shot time are curve-fit estimates from the telemetry.
+    // When they can't be estimated (n/a, e.g. a truncated recording) the
+    // fields are cleared rather than left at the defaults; a warning says why.
+    if (telemetry) {
+      form.setFieldValue("extraction_time", fields.extraction_time ?? "");
+      form.setFieldValue("pre_infusion_time", fields.pre_infusion_time ?? "");
+    }
     if (fields.grind_setting) form.setFieldValue("grind_setting", fields.grind_setting);
     if (fields.grinder_id) form.setFieldValue("grinder_id", String(fields.grinder_id));
     if (fields.device_id) form.setFieldValue("device_id", String(fields.device_id));

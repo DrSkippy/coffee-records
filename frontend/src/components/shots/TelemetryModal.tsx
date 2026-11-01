@@ -1,8 +1,9 @@
 import { LineChart } from "@mantine/charts";
-import { Center, Loader, Modal, Text } from "@mantine/core";
+import { Center, Divider, Group, Loader, Modal, Stack, Text } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { telemetryResourceUrl } from "../../api/resources";
-import type { Shot } from "../../types";
+import { getShotTelemetryPhases } from "../../api/shots";
+import type { Shot, TelemetryPhases } from "../../types";
 
 
 interface SeriesPoint {
@@ -83,6 +84,103 @@ function extractSeries(
   return { data, activeSeries };
 }
 
+const seconds = (value: number | null) => (value === null ? "n/a" : `${value.toFixed(1)} s`);
+
+function naReason(phases: TelemetryPhases): string | null {
+  if (phases.issues.includes("no_pressure")) return "no pressure data";
+  if (phases.issues.includes("truncated_start"))
+    return `recording started mid-shot at ${phases.recording_start_bar?.toFixed(1)} bar`;
+  return null;
+}
+
+function Estimate({ label, value, detail }: { label: string; value: string; detail?: string }) {
+  return (
+    <Stack gap={0}>
+      <Text size="xs" c="dimmed">
+        {label}
+      </Text>
+      <Text fw={600}>{value}</Text>
+      {detail && (
+        <Text size="xs" c="dimmed">
+          {detail}
+        </Text>
+      )}
+    </Stack>
+  );
+}
+
+function PhaseEstimates({ shot, phases }: { shot: Shot; phases: TelemetryPhases }) {
+  const reason = naReason(phases);
+  if (reason) {
+    return (
+      <Text size="sm" c="dimmed">
+        Pre-infusion and shot time: n/a ({reason})
+      </Text>
+    );
+  }
+  const profile =
+    phases.profiled === null
+      ? "n/a"
+      : phases.profiled
+        ? "Profiled"
+        : "Natural decline";
+  const profileDetail =
+    phases.end_ratio !== null && phases.peak_pressure_bar !== null
+      ? `ends at ${Math.round(phases.end_ratio * 100)}% of ${phases.peak_pressure_bar.toFixed(1)} bar` +
+        (shot.flow_taper ? " · Flow Taper set" : "")
+      : undefined;
+  const boundaries = [
+    ["pump on", phases.t_pump_on],
+    ["ramp", phases.t_ramp],
+    ["flow on", phases.t_flow_on],
+    ["pump off", phases.t_pump_off],
+  ]
+    .filter(([, t]) => t !== null)
+    .map(([name, t]) => `${name} ${(t as number).toFixed(1)} s`)
+    .join(" · ");
+  const notes = [
+    phases.issues.includes("flow_before_ramp") && "flow started before the pressure ramp",
+    phases.issues.includes("low_peak_pressure") &&
+      `peak pressure only ${phases.peak_pressure_bar?.toFixed(1)} bar`,
+  ].filter(Boolean);
+
+  return (
+    <Stack gap="xs">
+      <Group gap="xl" align="flex-start">
+        <Estimate
+          label="Pre-infusion"
+          value={seconds(phases.pre_infusion_s)}
+          detail={
+            phases.pump_on_imputed
+              ? `pump on estimated (recording started at ${phases.recording_start_bar?.toFixed(2)} bar)`
+              : "pump on to start of stream"
+          }
+        />
+        <Estimate
+          label="Shot time"
+          value={seconds(phases.shot_time_s)}
+          detail={
+            shot.extraction_time !== null
+              ? `start of stream to pump off · logged ${shot.extraction_time} s`
+              : "start of stream to pump off"
+          }
+        />
+        <Estimate label="Pressure profile" value={profile} detail={profileDetail} />
+      </Group>
+      {boundaries && (
+        <Text size="xs" c="dimmed">
+          Fitted boundaries (telemetry clock): {boundaries}
+        </Text>
+      )}
+      {notes.length > 0 && (
+        <Text size="xs" c="yellow.8">
+          Note: {notes.join("; ")}
+        </Text>
+      )}
+    </Stack>
+  );
+}
+
 export default function TelemetryModal({
   shot,
   opened,
@@ -96,6 +194,8 @@ export default function TelemetryModal({
   const [error, setError] = useState<string | null>(null);
   const [chartData, setChartData] = useState<SeriesPoint[]>([]);
   const [activeSeries, setActiveSeries] = useState<SeriesDef[]>([]);
+  const [phases, setPhases] = useState<TelemetryPhases | null>(null);
+  const [phasesError, setPhasesError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!opened || !shot.telemetry_filename) return;
@@ -115,7 +215,17 @@ export default function TelemetryModal({
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [opened, shot.telemetry_filename]);
+    // Estimates load independently: a failed fit must not hide the chart.
+    getShotTelemetryPhases(shot.id)
+      .then((p) => {
+        setPhases(p);
+        setPhasesError(null);
+      })
+      .catch((e: Error) => {
+        setPhases(null);
+        setPhasesError(e.message);
+      });
+  }, [opened, shot.id, shot.telemetry_filename]);
 
   const hasRightAxis = activeSeries.some((s) => s.yAxisId === "right");
 
@@ -179,6 +289,18 @@ export default function TelemetryModal({
         <Center h={300}>
           <Text c="dimmed">No data</Text>
         </Center>
+      )}
+      {!loading && (phases || phasesError) && (
+        <>
+          <Divider my="sm" label="Estimates from telemetry (curve fit)" labelPosition="left" />
+          {phases ? (
+            <PhaseEstimates shot={shot} phases={phases} />
+          ) : (
+            <Text size="sm" c="dimmed">
+              Estimates unavailable: {phasesError}
+            </Text>
+          )}
+        </>
       )}
     </Modal>
   );

@@ -147,6 +147,24 @@ class BrewmeoConfig(BaseModel):
     final_weight_tolerance_grams: float = 2.0
 
 
+class TelemetryPhasesConfig(BaseModel):
+    """Calibration for estimating pre-infusion and shot time from telemetry.
+
+    Thresholds come from the exploration in ``notebooks/telemetry_phases``.
+    """
+
+    grid_step_s: float = 0.05
+    median_half_width: int = 2
+    zero_pressure_bar: float = 0.3
+    truncated_start_bar: float = 3.0
+    pump_off_bar: float = 0.7
+    plateau_lookback_s: float = 2.0
+    flow_fit_max_g: float = 4.0
+    pump_on_offset_s: float = 2.65
+    profile_end_ratio: float = 0.65
+    profile_rmse_bar: float = 0.15
+
+
 class ShotDefaultsSeed(BaseModel):
     """Initial values for the New Shot form defaults singleton."""
 
@@ -176,6 +194,7 @@ class Config(BaseModel):
     grinders: GrindersConfig = GrindersConfig()
     matching: MatchingConfig = MatchingConfig()
     brewmeo: BrewmeoConfig = BrewmeoConfig()
+    telemetry_phases: TelemetryPhasesConfig = TelemetryPhasesConfig()
     shot_defaults_seed: ShotDefaultsSeed = ShotDefaultsSeed()
 
 

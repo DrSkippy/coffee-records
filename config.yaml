@@ -43,6 +43,17 @@ brewmeo:
   disturbance_seconds: 0.25
   disturbance_tail_fraction: 0.2
   final_weight_tolerance_grams: 2.0
+telemetry_phases:            # pre-infusion / shot time estimation (notebooks/telemetry_phases)
+  grid_step_s: 0.05           # breakpoint search resolution
+  median_half_width: 2        # running-median half width (samples) to remove spikes
+  zero_pressure_bar: 0.3      # below this counts as no pressure
+  truncated_start_bar: 3.0    # a recording starting above this began mid-shot
+  pump_off_bar: 0.7           # final drop starts after the last sample above this
+  plateau_lookback_s: 2.0     # plateau seconds fitted before the final drop
+  flow_fit_max_g: 4.0         # flow-onset fit window ends at this cup weight
+  pump_on_offset_s: 2.65      # pump-on lead for recordings that auto-start pressurised
+  profile_end_ratio: 0.65     # plateau ending below this fraction of peak = profiled
+  profile_rmse_bar: 0.15      # plateau deviating more than this from a smooth decline = profiled
 shot_defaults_seed:
   maker: "Scott"
   dose_weight: 20.0

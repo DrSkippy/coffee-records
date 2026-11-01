@@ -1,0 +1,235 @@
+description: 'One-time remediation of historical shot anomalies found by the telemetry phase estimator
+  (2026-11-01). Set recommend: false on any change you do not want; only recommend: true rows are applied.'
+note_suffix: '[telemetry remediation 2026-11-01] {field} changed from {current} to {proposed}: {reason}'
+not_changed:
+  truncated_recordings: '657, 658, 660, 664, 668, 687, 705: recording started mid-shot, so no estimate.
+    657 and 658 hold the Brewmeo recording length (61.0, 72.7 s), but there is no better value'
+  no_pressure: '706'
+  light_tapers_kept: '328, 332, 398, 428: Flow Taper set; light tapers to about 70% of peak, kept as profiled'
+  accidental_modulation: '496: lever hit by accident mid-shot (per its note); not a profile, Flow Taper
+    left unset'
+  extraction_delta: unchanged on every shot
+  pre_infusion_time: historical "5+3"-style values left as they are
+changes:
+- shot_id: 363
+  date: '2026-05-16'
+  maker: Scott
+  field: extraction_time
+  current: 96.0
+  proposed: 36.7
+  recommend: true
+  confidence: high
+  reason: 'Typo: logged 96 s; telemetry shot time 36.7 s'
+- shot_id: 709
+  date: '2026-10-26'
+  maker: Sara
+  field: extraction_time
+  current: 37.1
+  proposed: 27.4
+  recommend: true
+  confidence: high
+  reason: 'Uncorrected Brewmeo import: logged value is the recording length (37.1 s)'
+- shot_id: 713
+  date: '2026-10-28'
+  maker: Scott
+  field: extraction_time
+  current: 22.8
+  proposed: 16.5
+  recommend: true
+  confidence: medium
+  reason: 'Uncorrected Brewmeo import: logged value is the recording length (22.8 s). Low-pressure profiled
+    shot with early flow, so the fit is less certain'
+- shot_id: 640
+  date: '2026-09-27'
+  maker: Sara
+  field: extraction_time
+  current: 43.0
+  proposed: 33.5
+  recommend: true
+  confidence: high
+  reason: Logged time starts in pre-infusion (about total time)
+- shot_id: 646
+  date: '2026-09-30'
+  maker: Sara
+  field: extraction_time
+  current: 38.0
+  proposed: 26.7
+  recommend: true
+  confidence: high
+  reason: Logged time starts in pre-infusion (about total time)
+- shot_id: 697
+  date: '2026-10-22'
+  maker: Sara
+  field: extraction_time
+  current: 32.0
+  proposed: 26.6
+  recommend: true
+  confidence: high
+  reason: Logged time starts in pre-infusion (about total time)
+- shot_id: 681
+  date: '2026-10-16'
+  maker: Scott
+  field: extraction_time
+  current: 40.0
+  proposed: 34.1
+  recommend: true
+  confidence: high
+  reason: Logged time starts before the recording (about total time); flow began during pre-infusion
+- shot_id: 289
+  date: '2026-04-20'
+  maker: Scott
+  field: extraction_time
+  current: 26.0
+  proposed: 17.9
+  recommend: true
+  confidence: high
+  reason: Logged time starts in the pre-infusion plateau (5+5 era)
+- shot_id: 466
+  date: '2026-07-17'
+  maker: Scott
+  field: extraction_time
+  current: 40.0
+  proposed: 34.6
+  recommend: true
+  confidence: high
+  reason: Logged time starts at the pressure ramp, before flow
+- shot_id: 330
+  date: '2026-04-30'
+  maker: Scott
+  field: extraction_time
+  current: 28.0
+  proposed: 19.7
+  recommend: true
+  confidence: high
+  reason: Profiled shot; logged time starts at the pressure ramp, before flow
+- shot_id: 405
+  date: '2026-06-04'
+  maker: Scott
+  field: extraction_time
+  current: 29.0
+  proposed: 20.4
+  recommend: true
+  confidence: high
+  reason: Profiled shot; logged time starts at the pressure ramp
+- shot_id: 431
+  date: '2026-06-17'
+  maker: Scott
+  field: extraction_time
+  current: 25.0
+  proposed: 19.2
+  recommend: true
+  confidence: high
+  reason: Profiled shot; logged time starts at the pressure ramp, before flow
+- shot_id: 465
+  date: '2026-07-17'
+  maker: Scott
+  field: extraction_time
+  current: 25.0
+  proposed: 18.7
+  recommend: true
+  confidence: high
+  reason: Profiled shot; logged time starts at the pressure ramp, before flow
+- shot_id: 458
+  date: '2026-06-30'
+  maker: Scott
+  field: extraction_time
+  current: 23.0
+  proposed: 30.2
+  recommend: false
+  confidence: medium
+  reason: Logged 23 s starts about 7 s after the cup weight is visibly rising; likely mis-entered (declined
+    in review 2026-11-01)
+- shot_id: 569
+  date: '2026-08-29'
+  maker: Scott
+  field: extraction_time
+  current: 28.0
+  proposed: 37.0
+  recommend: false
+  confidence: medium
+  reason: Slow start; logged time begins about 9 s after the stream is established (declined in review
+    2026-11-01)
+- shot_id: 656
+  date: '2026-10-04'
+  maker: Scott
+  field: extraction_time
+  current: 42.0
+  proposed: 47.8
+  recommend: false
+  confidence: medium
+  reason: Long slow drip; logged time begins about 6 s after the fitted stream start (declined in review
+    2026-11-01)
+- shot_id: 661
+  date: '2026-10-05'
+  maker: Scott
+  field: extraction_time
+  current: 35.0
+  proposed: 41.6
+  recommend: false
+  confidence: medium
+  reason: Long slow drip; logged time begins about 7 s after the fitted stream start (declined in review
+    2026-11-01)
+- shot_id: 606
+  date: '2026-09-13'
+  maker: Scott
+  field: extraction_time
+  current: 75.0
+  proposed: 88.6
+  recommend: false
+  confidence: low
+  reason: Broken weight trace (interpolated to 200 s); fit unreliable
+- shot_id: 653
+  date: '2026-10-02'
+  maker: Sara
+  field: flow_taper
+  current: true
+  proposed: false
+  recommend: true
+  confidence: high
+  reason: Flow Taper set, but the trace is a natural decline (ends at 88% of peak)
+- shot_id: 676
+  date: '2026-10-14'
+  maker: Sara
+  field: flow_taper
+  current: true
+  proposed: false
+  recommend: true
+  confidence: high
+  reason: Flow Taper set, but the trace is a natural decline (ends at 90% of peak)
+- shot_id: 680
+  date: '2026-10-15'
+  maker: Sara
+  field: flow_taper
+  current: true
+  proposed: false
+  recommend: true
+  confidence: high
+  reason: Flow Taper set, but the trace is a natural decline (ends at 84% of peak)
+- shot_id: 295
+  date: '2026-04-21'
+  maker: Sara
+  field: flow_taper
+  current: false
+  proposed: true
+  recommend: false
+  confidence: low
+  reason: Not flagged, but pressure eases smoothly from 8.1 to 3.5 bar (ends at 43% of peak); taper or
+    fast-eroding puck
+- shot_id: 290
+  date: '2026-04-21'
+  maker: Scott
+  field: flow_taper
+  current: false
+  proposed: true
+  recommend: false
+  confidence: low
+  reason: Not flagged, but pressure falls to 61% of peak; borderline
+- shot_id: 681
+  date: '2026-10-16'
+  maker: Scott
+  field: flow_taper
+  current: false
+  proposed: true
+  recommend: false
+  confidence: low
+  reason: Not flagged; pressure falls from 9 to about 6 bar then holds flat; possibly a deliberate taper

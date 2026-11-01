@@ -148,6 +148,7 @@ grinders:                    # notation family keywords
   dual_scale_min_value: 30.0
 matching: { ... }            # fuzzy-match thresholds for coffees/equipment
 brewmeo: { ... }             # Brewmeo CSV signal-processing calibration
+telemetry_phases: { ... }    # pre-infusion / shot time estimation thresholds
 shot_defaults_seed: { ... }  # initial New Shot form defaults
 ```
 
@@ -279,6 +280,25 @@ Clicking a telemetry preview opens the full interactive chart of flow, pressure 
 
 ![Shot telemetry modal showing flow, pressure and weight over time](docs/screenshots/telemetry.png)
 
+Below the chart, **Estimates from telemetry** shows the fitted pre-infusion and shot time (with the logged extraction time for comparison), whether the pressure followed a natural decline or a modulated profile, and the fitted phase boundaries (see [Telemetry phase estimates](#telemetry-phase-estimates)).
+
+#### Telemetry phase estimates
+
+Pre-infusion and shot time are estimated from the pressure and weight traces by fitting two joined curve segments at each transition and taking their intersection:
+
+| Boundary | Fit |
+|---|---|
+| Pump on | zero-pressure baseline ∩ rising pressure line |
+| Flow on | flat weight baseline ∩ quadratic weight rise (start of the steady stream, not the first drip) |
+| Pump off | declining plateau line ∩ final pressure drop (the drop to zero, so a flow-tapered shot is cut at the real pump off) |
+
+- **Pre-infusion** = pump on → flow on; **shot time** = flow on → pump off. Shot time matches the hand-timed extraction time to about 1.5 s on the historical shots.
+- Brewmeo recordings auto-start at about 0.85 bar, after the pump is on. For these, pump on is estimated `pump_on_offset_s` (2.65 s) before the recording start, and the estimate is marked as estimated.
+- A recording that starts above 3 bar began mid-shot; both times are shown as n/a. So are recordings with no pressure data.
+- The pressure profile is classed **profiled** when the brew plateau ends below 65% of peak pressure or departs from a smooth decline by more than 0.15 bar RMS.
+
+The thresholds live in the `telemetry_phases` block of `config.yaml`. The investigation behind them is in [`notebooks/telemetry_phases/README.md`](notebooks/telemetry_phases/README.md).
+
 ### New Shot
 
 Form to log a shot. All fields except date and maker are optional. The form opens pre-filled with defaults, so you only enter what changed.
@@ -321,14 +341,14 @@ Equipment defaults (grinder, machine, scale) are resolved by substring match on 
 | Weight | Final weight |
 | Dose | Dose |
 | Date | Date |
-| Extraction time | Extraction time (rounded to 0.1 s) |
 | Grinder Setting | Grind setting |
-| Preinfusion Time | Pre-infusion time |
 | Operator | Maker (if empty, Scott/Sara by the time the shot was pulled) |
 | Beans + Roastery + Roasting Date | Coffee: an existing coffee must fuzzy-match name and roaster **and** have the same roast date. Otherwise a new coffee (with Roast Color → roast level, Variety, and origin/process copied from an earlier bag of the same beans) is offered as "New: …" and created on save. |
 | Grinder / Espresso Machine name, brand, model | Grinder / Machine, matched by shared words in `make + model`. Equipment is never created; unmatched equipment is reported and kept in the notes. |
 
-Remaining metadata (basket, tamper, ratings, temperatures, average flow…) is written to **Notes**. Record IDs and export boilerplate are left out of the notes.
+**Pre-infusion time** and **Extraction time** come from the [telemetry phase estimates](#telemetry-phase-estimates), not the CSV: Brewmeo leaves its pre-infusion empty and reports the whole recording length as extraction time. When the estimate is n/a (for example, a recording that started mid-shot), both fields are left empty and a warning asks you to enter them.
+
+Remaining metadata (basket, tamper, ratings, temperatures, average flow…) is written to **Notes**, followed by a **Telemetry estimates (curve fit)** block with the pre-infusion, shot time, pressure profile and recording length. Record IDs and export boilerplate are left out of the notes.
 
 The `moment` rows are converted to Beanconqueror-style telemetry JSON and attached as the Telemetry file:
 - Weight goes to `weight`, pressure to `pressureFlow`, temperature to `temperatureFlow`.
@@ -488,6 +508,7 @@ Requests without a valid key return `401 Unauthorized`. Authentication is disabl
 | `DELETE` | `/api/shots/<id>/video` | Remove the video |
 | `POST` | `/api/shots/<id>/telemetry` | Validate telemetry JSON and upload it with a generated PNG thumbnail (`multipart/form-data`, field `file`) |
 | `DELETE` | `/api/shots/<id>/telemetry` | Remove the telemetry JSON and generated thumbnail |
+| `GET` | `/api/shots/<id>/telemetry/phases` | Estimate pre-infusion and shot time from the stored telemetry: `{"pre_infusion_s": 9.9, "shot_time_s": 29.2, "t_pump_on": 2.1, "t_ramp": 9.0, "t_flow_on": 12.0, "t_pump_off": 41.2, "pump_on_imputed": false, "profiled": false, "end_ratio": 0.86, "issues": []}`. Times are null when n/a; `issues` explains why (e.g. `truncated_start`, `no_pressure`). `404` without telemetry, `422` if the stored file is unusable. |
 
 CSV import returns `422` for files that aren't UTF-8 or lack the Brewmeo columns (`information_type`, `elapsed`, `pressure`, `current_total_shot_weight`, `metatype`, `metadata`, `comment`) or metadata rows.
 
