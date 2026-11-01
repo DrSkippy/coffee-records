@@ -215,7 +215,7 @@ The command skips existing PNGs, reports generated/skipped/failed counts, and ex
 
 ## Utility scripts
 
-Run these from the project root with `poetry run python bin/<script>.py`. Only `backfill_telemetry_thumbnails.py` is copied into the Docker image.
+Run the Python scripts from the project root with `poetry run python bin/<script>.py`. Only `backfill_telemetry_thumbnails.py` is copied into the Docker image.
 
 | Script | Purpose |
 |---|---|
@@ -223,6 +223,7 @@ Run these from the project root with `poetry run python bin/<script>.py`. Only `
 | `backfill_telemetry_thumbnails.py` | Generate missing telemetry PNG previews; `--force` regenerates all |
 | `import_ocr_data.py` | Import shots and coffees from OCR'd handwritten log sheets (`coffee_roasters.csv`, `coffee_shots.csv`). Options: `--input-dir` (default `import_data/1/files`), `--coffees-file`, `--shots-file`, `--settings` (default `ocr_import.yaml`), `--year`, `--dry-run`, `--verbose` |
 | `edit_telemetry.py` | Plot and edit a Beanconqueror telemetry JSON file: trim with `--start-time`/`--end-time`, boxcar-smooth with `--weight`/`--flow`/`--pressure N`, and name the output after a shot with `--shot-id`. Writes `<input>_edited.json` and never touches the database. |
+| `capture_screenshots.mjs` | Node 22+, not Python: `node bin/capture_screenshots.mjs --base http://127.0.0.1:5173 --csv "<Brewmeo export>.csv" [name ...]`. Recaptures `docs/screenshots/` with headless Chrome from a running dev frontend, opening the telemetry modal and a CSV import (nothing is saved). `--timezone` (default Europe/London) puts New Shot after 9:30 am. |
 | `repair_duplicate_coffees.py` | One-off: merge the known duplicate coffees created by the OCR import, moving their shots to the lower-ID coffee. Dry run by default; `--apply` writes. |
 
 Always run `import_ocr_data.py` with `--dry-run` first.
