@@ -133,6 +133,43 @@ def calibrate_offsets(
     }
 
 
+def profile_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Compare telemetry-detected profiling with the app's ``flow_taper`` flag.
+
+    Also reports shot-time agreement with the logged time per group, over
+    every shot with a classification (quality flags included).
+    """
+    classified = [r for r in rows if r["profiled_detected"] != ""]
+    confusion = {
+        f"app_{flag}_detected_{detected}": [
+            r["shot_id"]
+            for r in classified
+            if r["flow_taper"] is flag and r["profiled_detected"] is detected
+        ]
+        for flag in (True, False)
+        for detected in (True, False)
+    }
+    agreement: dict[str, Any] = {}
+    for detected in (True, False):
+        diffs = [
+            float(r["logged_extraction_time"]) - float(r["shot_time"])
+            for r in classified
+            if r["profiled_detected"] is detected
+            and r["shot_time"] != ""
+            and r["logged_extraction_time"] is not None
+        ]
+        agreement[f"detected_{detected}"] = {
+            "n": len(diffs),
+            "median_logged_minus_shot": statistics.median(diffs),
+            "within_3s": sum(abs(d) <= 3 for d in diffs) / len(diffs),
+        }
+    return {
+        "n_classified": len(classified),
+        "confusion": {k: {"n": len(v), "shots": v} for k, v in confusion.items()},
+        "agreement_with_logged": agreement,
+    }
+
+
 def flow_on_sensitivity(
     shots: list[ShotRow], telemetry: dict[int, pf.Telemetry], offset: float
 ) -> list[dict[str, float]]:
@@ -289,6 +326,9 @@ def main() -> None:
                 "pump_off_rmse_bar": _fmt(
                     res.fits["pump_off"].rmse if "pump_off" in res.fits else None
                 ),
+                "end_ratio": _fmt(res.end_ratio),
+                "plateau_rmse_bar": _fmt(res.plateau_rmse),
+                "profiled_detected": "" if res.profiled is None else res.profiled,
                 "flags": ";".join(res.flags),
             }
         )
@@ -389,6 +429,7 @@ def main() -> None:
         and (lg := num(r, "logged_extraction_time")) is not None
         and abs(lg - st) > DISAGREE_S
     ]
+    summary["profile"] = profile_summary(rows_out)
     (HERE / "results" / "summary.json").write_text(
         json.dumps(summary, indent=2, default=float)
     )
@@ -538,6 +579,42 @@ def main() -> None:
     ax.grid(alpha=0.3)
     fig.tight_layout()
     fig.savefig(HERE / "figures" / "pre_infusion_over_time.png", dpi=90)
+
+    fig = Figure(figsize=(7, 5))
+    ax = fig.add_subplot()
+    for flag, color, label in (
+        (False, "#228be6", "app: not profiled"),
+        (True, "#e8590c", "app: Flow Taper"),
+    ):
+        ratio_rmse = [
+            (float(r["end_ratio"]), float(r["plateau_rmse_bar"]))
+            for r in rows_out
+            if r["end_ratio"] != "" and r["flow_taper"] is flag
+        ]
+        xs, ys = zip(*ratio_rmse)
+        ax.scatter(xs, ys, s=16, color=color, alpha=0.75, label=label)
+    for r in rows_out:
+        if r["end_ratio"] != "" and r["flow_taper"] is not r["profiled_detected"]:
+            ax.annotate(
+                str(r["shot_id"]),
+                (float(r["end_ratio"]), float(r["plateau_rmse_bar"])),
+                fontsize=7,
+                xytext=(3, 3),
+                textcoords="offset points",
+            )
+    ax.axvline(pf.PROFILE_END_RATIO, color="#868e96", lw=1, ls="--")
+    ax.axhline(pf.PROFILE_RMSE_BAR, color="#868e96", lw=1, ls="--")
+    ax.set_yscale("log")
+    ax.set(
+        title="Profile detection: profiled = left of or above the dashed lines",
+        xlabel="plateau-end pressure / peak pressure",
+        ylabel="plateau deviation from smooth decline (RMSE, bar)",
+    )
+    ax.title.set_fontsize(9)
+    ax.legend(fontsize=8)
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(HERE / "figures" / "profile_detection.png", dpi=90)
     logger.info("Wrote results and figures under %s", HERE)
 
 

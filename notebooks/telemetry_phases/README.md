@@ -1,7 +1,7 @@
 # Telemetry phase estimation: pre-infusion and shot time
 
-**Status:** exploration only. Nothing in the application has changed. This
-report is for review and refinement before any implementation.
+**Status:** exploration only. Nothing in the application has changed.
+Decisions from the first review (2026-11-01) are recorded in §7.
 **Data:** all 185 shots with telemetry as of 2026-11-01.
 
 ## Goal
@@ -168,53 +168,106 @@ later as the window widens.
 | Pattern | Shots | Likely cause |
 |---|---|---|
 | Logged value is a typo | 363 (logged 96, fitted 36.7) | Data entry. The telemetry could catch this at save time. |
-| Logged ≈ ramp → pump off | 289, 330, 431, 465 (Apr–Jul) | The timer was started at the ramp, not the first drip. These are early `5+5` shots. |
-| Long, slow drip before a steady stream | 569, 656, 661 | Fine grind or slow start. "Flow begins" is ambiguous here: first drips or established stream? (See Q2 in §6.) |
+| Logged ≈ ramp → pump off | 289, 330, 431, 465 (Apr–Jul) | The timer was started at the ramp, not the first drip. 330, 431 and 465 are profiled shots (§6); the fitted pump-off on them is correct. |
+| Long, slow drip before a steady stream | 569, 656, 661 | Fine grind or slow start. Flow on is the start of the steady stream (decision 2 in §7), so the drip phase counts as pre-infusion. |
 | Early drips during pre-infusion | 681, plus 8 flagged `flow_before_ramp` | Real channel or drip flow before the ramp. Pre-infusion comes out short (2–6 s). |
 | Other | 458, 466 | Not investigated. |
 
 Other flags: `low_peak_pressure` (336, 412, 713) marks shots that never
-reached 6 bar, which are gushers or deliberately profiled shots. The fits
-still look reasonable on them.
+reached 6 bar. All three are Flow Taper shots (§6), and the fits still look
+reasonable on them.
 
 ![Flagged and disagreeing shots](figures/problem_shots.png)
 
-## 6. Decisions needed before implementation
+## 6. Profiled shots
 
-1. **Pump-on for auto-start recordings.**
-   - Option (a): impute it as described in §3.
-   - Option (b): report pre-infusion only when pump-on was measured, and
-     report `ramp → flow on` for every shot.
-   - Option (c): change the Brewmeo auto-start trigger, if the app allows
-     it.
-   - *Recommendation:* (a), storing an `imputed` flag alongside the value.
-2. **What "flow begins" means.**
-   - The current definition is the extrapolated onset of the weight rise.
-     It matches the logged timer best.
-   - The alternative is the first drip: a weight threshold such as 0.3 g.
-     That would make the slow-drip shots longer.
-   - *Recommendation:* keep the current definition.
-3. **Truncated recordings (7 shots).** Show "n/a", or estimate shot time
-   from the recording start? *Recommendation:* show "n/a".
-4. **Use the result to check entries.** Warn on save when the logged
-   extraction time differs from the fitted shot time by more than 5 s
-   (would have caught shot 363). Optional.
+On a normal shot, pressure declines slowly and smoothly as the puck erodes.
+On a profiled shot (the app's **Flow Taper** flag), the pressure is
+deliberately modulated during the shot: typically eased from about 9 bar
+down to about 1 bar, held there, and only then cut.
 
-## 7. Implementation sketch (pending approval)
+**The phase estimator handles profiled shots without changes.** Pump-off is
+found as the final drop to zero (the 0.7 bar rule in §2), so the
+deliberate taper is never mistaken for pump-off. Flow on and pump on happen
+before any modulation starts.
+
+**Profiling can be detected from the pressure trace.** Two features are
+measured on the brew plateau, from 1 s after reaching peak until 0.5 s
+before pump-off (`classify_profile` in `phase_fit.py`):
+
+- **End ratio:** pressure at the end of the plateau as a fraction of peak.
+  Natural decline ends at 72–91% of peak (5th–95th percentile of unflagged
+  shots).
+- **Plateau RMSE:** how far the plateau departs from a smooth quadratic
+  decline. Unflagged shots stay at or below 0.10 bar (95th percentile).
+
+A shot counts as profiled when its end ratio is below 0.65 **or** its RMSE
+is above 0.15 bar.
+
+| | detected profiled | detected natural |
+|---|---|---|
+| **app: Flow Taper** | 24 | 7 |
+| **app: not profiled** | 4 | 142 |
+
+The detector agrees with the app flag on 166 of 177 classifiable shots
+(94%). The 11 disagreements fall into four groups:
+
+| Shots | What the trace shows |
+|---|---|
+| 653, 676, 680 (Sara, Oct) | Flagged Flow Taper, but the traces are textbook natural declines. Probably mis-set flags. |
+| 328, 332, 398, 428 (Scott, Apr–Jun) | Flagged. Light tapers that only reach about 70% of peak, with small steps. They overlap the natural range, so they can't be separated on these two features. |
+| 290, 295 (Apr 21) | Not flagged, but the pressure falls smoothly to 50–60% of peak. Either untagged gentle tapers or fast-eroding pucks. |
+| 496, 681 | Not flagged; real modulation. Shot 496's note says the lever was hit by accident mid-shot. Shot 681 dips to about 6 bar and recovers. |
+
+Agreement with the logged extraction time is lower on profiled shots: 64%
+within ±3 s, against 84% for natural shots (median logged − fitted +2.1 s
+vs +1.0 s). The traces don't show a fitting error. The gap comes from how
+the timer was used on those early profiled shots (§5).
+
+![Profile detection](figures/profile_detection.png)
+
+## 7. Decisions (2026-11-01)
+
+1. **Pump-on for Brewmeo auto-start recordings:** estimate it with the
+   level calibration (§3), and store an `imputed` flag with the value.
+2. **Flow on:** the start of the steady stream from the quadratic curve fit
+   (§2), not the first drip.
+3. **Truncated recordings:** show pre-infusion and shot time as n/a.
+   Profiled shots are a separate case. They get normal estimates; see §6
+   and open question A.
+4. **Checking entries against telemetry** (e.g. warning when the logged
+   extraction time disagrees with the fitted shot time): to be specified
+   when the estimator is added to the app.
+
+**Open questions:**
+
+- **A. Display for profiled shots.** Show the fitted times as usual and
+  mark the shot as profiled? Is the profile marker taken from the app's
+  Flow Taper flag, from the detector, or both?
+- **B. The detector and the Flow Taper flag.** Should the detector feed
+  back into the flag? For example, it could suggest the flag on upload, or
+  report mismatches. This matters because the grind model already excludes
+  Flow Taper shots: shots 653, 676 and 680 are probably excluded wrongly,
+  and 290 and 295 are probably included wrongly.
+
+## 8. Implementation sketch (pending approval)
 
 - `coffee_records/services/telemetry_phases.py`: port `phase_fit.py` with
-  thresholds in `config.yaml` (`telemetry_phases:` block) and a Pydantic
-  result model (`pre_infusion_s`, `shot_time_s`, `t_*`, `pump_on_imputed`,
-  `flags`).
+  thresholds in `config.yaml` (`telemetry_phases:` block). The Pydantic
+  result model would hold `pre_infusion_s`, `shot_time_s`, the `t_*`
+  boundaries, `pump_on_imputed`, `profiled_detected`, `end_ratio`,
+  `plateau_rmse` and `flags`. Truncated or pressure-less recordings return
+  n/a (None) times with a reason flag.
 - Compute the phases on telemetry upload. Either store them in new nullable
   `shots` columns, or compute them on read from the stored JSON; the fit
   takes about 30 ms per shot.
 - Add a `bin/` backfill script for existing shots, in the style of
   `backfill_telemetry_thumbnails.py`.
-- Show the phase markers in `TelemetryModal`, and add the fitted
-  pre-infusion and shot time to the shot card and reports.
-- Tests: use synthetic piecewise curves with known breakpoints, plus the
-  existing Beanconqueror fixture.
+- Show the phase markers in `TelemetryModal`. Add the fitted pre-infusion
+  (marked when imputed) and shot time to the shot card and reports.
+- Tests: use synthetic piecewise curves with known breakpoints (normal,
+  profiled, auto-start and truncated shapes), plus the existing
+  Beanconqueror fixture.
 
 ## Reproducing
 
@@ -226,4 +279,5 @@ poetry run python notebooks/telemetry_phases/explore.py \
 ```
 
 The script writes `results/phases.csv` (one row per shot, with all
-boundaries and flags), `results/summary.json` and `figures/*.png`.
+boundaries, profile features and flags), `results/summary.json` and
+`figures/*.png`.

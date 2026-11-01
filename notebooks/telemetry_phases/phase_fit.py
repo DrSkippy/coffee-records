@@ -46,6 +46,11 @@ TRUNCATED_START_BAR = 3.0
 FLOW_FIT_MAX_G = 4.0
 # Seconds of declining plateau included before the final pressure drop.
 PLATEAU_LOOKBACK_S = 2.0
+# Profiled-shot detection on the brew plateau (peak + 1 s to pump-off - 0.5 s).
+# Natural puck erosion ends at 72-91% of peak with a smooth (quadratic)
+# decline; a modulated profile ends lower or departs from the smooth curve.
+PROFILE_END_RATIO = 0.65
+PROFILE_RMSE_BAR = 0.15
 
 
 @dataclass
@@ -106,6 +111,9 @@ class PhaseResult:
     t_flow_on: float | None = None
     t_pump_off: float | None = None
     pump_on_imputed: bool = False
+    end_ratio: float | None = None
+    plateau_rmse: float | None = None
+    profiled: bool | None = None
     flags: list[str] = field(default_factory=list)
     fits: dict[str, Breakpoint] = field(default_factory=dict)
 
@@ -258,6 +266,35 @@ def fit_pump_off(pressure: Signal) -> Breakpoint | None:
     )
 
 
+def classify_profile(
+    pressure: Signal, t_ramp: float, t_pump_off: float, peak: float
+) -> tuple[float, float, bool] | None:
+    """Decide whether the brew plateau follows a modulated pressure profile.
+
+    Args:
+        pressure: Median-filtered pressure.
+        t_ramp: Main-ramp breakpoint.
+        t_pump_off: Pump-off breakpoint.
+        peak: Peak brew pressure.
+
+    Returns:
+        ``(end_ratio, plateau_rmse, profiled)``: plateau-end pressure as a
+        fraction of peak, RMS deviation (bar) from a quadratic fitted to the
+        plateau, and the classification; None if the plateau is too short.
+    """
+    t_peak = pressure.first_crossing(0.9 * peak, after=t_ramp)
+    if t_peak is None:
+        return None
+    grid = np.arange(t_peak + 1.0, t_pump_off - 0.5, 0.1)
+    if grid.size < 20:
+        return None
+    y = np.interp(grid, pressure.t, pressure.y)
+    end_ratio = float(np.median(y[-10:])) / peak
+    coef = np.polyfit(grid, y, 2)
+    rmse = float(np.sqrt(np.mean((np.polyval(coef, grid) - y) ** 2)))
+    return end_ratio, rmse, end_ratio < PROFILE_END_RATIO or rmse > PROFILE_RMSE_BAR
+
+
 def estimate_phases(
     telemetry: Telemetry,
     pump_on_offset: float | None = None,
@@ -318,23 +355,14 @@ def estimate_phases(
         result.t_pump_off = off.t0
         result.fits["pump_off"] = off
 
+    if result.t_ramp is not None and result.t_pump_off is not None:
+        profile = classify_profile(pressure, result.t_ramp, result.t_pump_off, peak)
+        if profile is not None:
+            result.end_ratio, result.plateau_rmse, result.profiled = profile
+
     if peak < 6.0:
         result.flags.append("low_peak_pressure")
     if result.t_flow_on is not None and result.t_ramp is not None:
         if result.t_flow_on < result.t_ramp - 1.0:
             result.flags.append("flow_before_ramp")
     return result
-
-
-def pressure_at_start_offset(telemetry: Telemetry, level: float) -> float | None:
-    """Seconds from fitted pump-on until pressure first reaches ``level``.
-
-    Calibrates the imputed pump-on for recordings that auto-start at
-    ``level`` bar: measured on recordings that captured the whole rise.
-    """
-    result = estimate_phases(telemetry)
-    if result.t_pump_on is None or "pump_on" not in result.fits:
-        return None
-    pressure = Signal(telemetry.pressure.t, median_filter(telemetry.pressure.y))
-    reach = pressure.first_crossing(level, after=result.t_pump_on)
-    return None if reach is None else reach - result.t_pump_on
