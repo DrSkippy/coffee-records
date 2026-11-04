@@ -2,14 +2,15 @@
 
 from flask import Blueprint
 from flask.typing import ResponseReturnValue
-from sqlalchemy.exc import SQLAlchemyError
 
 from coffee_records.blueprints.crud import CrudResource, register_crud
 from coffee_records.blueprints.helpers import (
+    clear_media,
     get_or_404,
     get_storage,
     require_upload,
     respond,
+    replace_media,
 )
 from coffee_records.database import get_session
 from coffee_records.models.coffee import Coffee
@@ -57,18 +58,10 @@ def upload_coffee_image(coffee_id: int) -> ResponseReturnValue:
     storage = get_storage()
     with get_session() as session:
         coffee = get_or_404(session, Coffee, coffee_id, "Coffee")
-        previous = coffee.image_filename
         new_filename = storage.save_upload(
             upload, IMAGE_EXTENSIONS, DEFAULT_IMAGE_EXTENSION
         )
-        coffee.image_filename = new_filename
-        try:
-            session.commit()
-        except SQLAlchemyError:
-            storage.delete(new_filename)
-            raise
-        if previous:
-            storage.delete(previous)
+        replace_media(session, coffee, "image_filename", new_filename, storage.delete)
         session.refresh(coffee)
         return respond(CoffeeResponse, coffee)
 
@@ -85,10 +78,6 @@ def delete_coffee_image(coffee_id: int) -> ResponseReturnValue:
     """
     with get_session() as session:
         coffee = get_or_404(session, Coffee, coffee_id, "Coffee")
-        previous = coffee.image_filename
-        if previous:
-            coffee.image_filename = None
-            session.commit()
-            get_storage().delete(previous)
+        if clear_media(session, coffee, "image_filename", get_storage().delete):
             session.refresh(coffee)
         return respond(CoffeeResponse, coffee)

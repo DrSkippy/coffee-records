@@ -24,6 +24,7 @@ from coffee_records.schemas.reports import (
     RegressionCoefficients,
     RegressionPoint,
 )
+from coffee_records.services.grind_model.features import temp_offset
 from coffee_records.services.grind_notation import (
     GrinderFamily,
     classify_grinder,
@@ -126,7 +127,7 @@ def _grinder_regression(
     shots = [shot for shot, _ in points]
     x1 = np.array([(s.date - roast_date).days for s in shots], dtype=float)
     x2 = np.array(
-        [cast(float, s.grinder_temp_before) - params.reference_temp_f for s in shots]
+        [temp_offset(cast(float, s.grinder_temp_before), params) for s in shots]
     )
     y = np.array([grind for _, grind in points])
 
@@ -144,7 +145,9 @@ def _grinder_regression(
         ),
         n_shots=len(points),
         coefficients=RegressionCoefficients(
-            a=round(fit.a, 6), b=round(fit.b, 6), c=round(fit.c, 6)
+            a=round(fit.a, params.coefficient_decimals),
+            b=round(fit.b, params.coefficient_decimals),
+            c=round(fit.c, params.coefficient_decimals),
         ),
         r_squared=fit.r_squared,
         points=[
@@ -153,9 +156,9 @@ def _grinder_regression(
                 date=shot.date,
                 x1=int(days),
                 x2=round(float(temp_offset), 2),
-                y=round(float(grind), 4),
+                y=round(float(grind), params.point_decimals),
                 y_str=format_grind_numeric(float(grind), grinders),
-                y_predicted=round(float(predicted), 4),
+                y_predicted=round(float(predicted), params.point_decimals),
                 y_predicted_str=format_grind_numeric(float(predicted), grinders),
             )
             for shot, days, temp_offset, grind, predicted in zip(

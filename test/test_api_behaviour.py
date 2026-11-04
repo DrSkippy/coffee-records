@@ -11,6 +11,7 @@ from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from coffee_records.config import Config
+from coffee_records.services.storage import MediaStorage
 
 TELEMETRY = (
     Path(__file__).parent / "fixtures" / "beanconqueror_flow_profile.json"
@@ -277,6 +278,26 @@ def test_failed_commit_keeps_existing_media(
             content_type="multipart/form-data",
         )
     assert sorted(p.name for p in media_dir.iterdir()) == [first]
+
+
+def test_post_commit_delete_failure_is_logged_not_raised(
+    client: FlaskClient, media_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A committed row still succeeds when file deletion fails afterwards."""
+    shot_id = _shot(client)
+    video = client.post(
+        f"/api/shots/{shot_id}/video",
+        data=_upload(b"v", "a.mp4"),
+        content_type="multipart/form-data",
+    ).get_json()["video_filename"]
+
+    def failing_delete(self: MediaStorage, filename: str) -> None:
+        raise OSError("disk on fire")
+
+    monkeypatch.setattr(MediaStorage, "delete", failing_delete)
+    resp = client.delete(f"/api/shots/{shot_id}/video")
+    assert resp.status_code == 200
+    assert resp.get_json()["video_filename"] is None  # commit already happened
 
 
 # ── Coffee images ────────────────────────────────────────────────────────────

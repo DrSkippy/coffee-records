@@ -91,7 +91,7 @@ class UploadsConfig(BaseModel):
         default="/var/www/html/resources/coffee",
         validation_alias=AliasChoices("media_dir", "coffee_image_dir"),
     )
-    coffee_image_base_url: str = "https://resources.drskippy.app/coffee"
+    coffee_image_base_url: str = ""
 
 
 class ReportsConfig(BaseModel):
@@ -112,6 +112,11 @@ class GrindModelConfig(BaseModel):
     target_brew_ratio: float = 2.0
     min_within_coffee_range: float = 0.5
     min_points: int = 3
+    # Decimal precision shared by the grind-model service and the regression
+    # report, so both persist and display the same numbers.
+    stored_decimals: int = 8
+    point_decimals: int = 4
+    coefficient_decimals: int = 6
     espresso_drink_types: list[DrinkType] = [
         DrinkType.americano,
         DrinkType.latte,
@@ -163,6 +168,21 @@ class TelemetryPhasesConfig(BaseModel):
     pump_on_offset_s: float = 2.65
     profile_end_ratio: float = 0.65
     profile_rmse_bar: float = 0.15
+    pump_on_reach: float = 0.7
+    ramp_reach: float = 0.6
+    peak_reach: float = 0.9
+    peak_percentile: int = 95
+    low_peak_bar: float = 6.0
+    flow_before_ramp_s: float = 1.0
+    min_pressure_samples: int = 20
+    pump_off_tail_s: float = 0.3
+    ramp_fit_start_s: float = 0.5
+    plateau_floor_bar: float = 1.0
+    profile_start_margin_s: float = 1.0
+    profile_end_margin_s: float = 0.5
+    profile_grid_step_s: float = 0.1
+    profile_min_samples: int = 20
+    profile_end_samples: int = 10
 
 
 class ShotDefaultsSeed(BaseModel):

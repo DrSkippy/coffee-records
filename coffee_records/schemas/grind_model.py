@@ -19,7 +19,7 @@ class GrindModelPoint(BaseModel):
     shot_id: int
     date: str
     age_days: int
-    temp_offset: float  # grinder_temp_before - 65
+    temp_offset: float  # grinder_temp_before - grind_model.reference_temp_f
     grind: float  # actual parsed grind setting (numeric)
     grind_str: str  # human-readable (e.g. "8+5")
     grind_predicted: float  # model prediction
@@ -39,11 +39,11 @@ class GrindModelTrainingResponse(BaseModel):
     n_iterations: int
     converged: bool
     r_squared: float | None
-    a0: float  # grinder_temp - 65
-    a2: float  # extraction_time - target_shot_time
-    a3: float  # dose_weight - 20
+    a0: float  # grinder_temp_before - grind_model.reference_temp_f
+    a2: float  # extraction_time - target shot time
+    a3: float  # dose_weight - grind_model.reference_dose_g
     a4: float  # age_days
-    a5: float  # final_weight - 2*dose
+    a5: float  # final_weight - grind_model.target_brew_ratio * dose
     coffee_intercepts: list[CoffeeInterceptItem]
 
 

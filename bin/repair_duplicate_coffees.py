@@ -10,18 +10,23 @@ Usage:
 """
 
 import argparse
+import logging
 import sys
 from datetime import date
-from typing import TypedDict
 from pathlib import Path
+from typing import TypedDict
+
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from coffee_records.config import load_config
-from coffee_records.database import get_session, init_db
-from coffee_records.models.coffee import Coffee
-from coffee_records.models.shot import Shot
-from sqlalchemy.orm import Session
+from coffee_records.config import load_config  # noqa: E402
+from coffee_records.database import get_session, init_db  # noqa: E402
+from coffee_records.models.coffee import Coffee  # noqa: E402
+from coffee_records.models.shot import Shot  # noqa: E402
+
+logger = logging.getLogger(__name__)
 
 
 class DuplicateSpec(TypedDict):
@@ -51,8 +56,8 @@ DUPLICATE_SPECS: list[DuplicateSpec] = [
     },
     {
         "description": "Cherry Picker Blend — Boxcar, roast_date 2026-02-10",
-        "roast_date": date(2026, 2, 10),
         "name_hint": "cherry picker",
+        "roast_date": date(2026, 2, 10),
         "roaster_hint": "boxcar",
     },
 ]
@@ -86,23 +91,79 @@ def find_duplicate_pair(
         .all()
     )
     if len(rows) == 0:
-        print(
-            f"  NOT FOUND: no coffees match roast_date={roast_date} name~={name_hint!r} roaster~={roaster_hint!r}"
+        logger.info(
+            "  NOT FOUND: no coffees match roast_date=%s name~=%r roaster~=%r",
+            roast_date,
+            name_hint,
+            roaster_hint,
         )
         return None
     if len(rows) == 1:
-        print(
-            f"  ALREADY CLEAN: only one match — id={rows[0].id} '{rows[0].roaster}' / '{rows[0].name}'"
+        logger.info(
+            "  ALREADY CLEAN: only one match — id=%s '%s' / '%s'",
+            rows[0].id,
+            rows[0].roaster,
+            rows[0].name,
         )
         return None
     if len(rows) > 2:
-        print(
-            f"  WARNING: {len(rows)} rows matched (expected 2) — skipping, manual review needed:"
+        logger.warning(
+            "  WARNING: %d rows matched (expected 2) — skipping, manual review needed:",
+            len(rows),
         )
         for r in rows:
-            print(f"    id={r.id}  '{r.roaster}' / '{r.name}'")
+            logger.warning("    id=%s  '%s' / '%s'", r.id, r.roaster, r.name)
         return None
     return (rows[0], rows[1])  # keeper (lower id), duplicate (higher id)
+
+
+def repair_spec(session: Session, spec: DuplicateSpec, dry_run: bool) -> None:
+    """Report — and unless ``dry_run``, apply — one duplicate-cluster repair.
+
+    Reassigns all shots from the higher-ID duplicate to the lower-ID keeper
+    and deletes the duplicate row. The caller commits.
+
+    Args:
+        session: SQLAlchemy session.
+        spec: Duplicate cluster to repair.
+        dry_run: When True, only report what would change.
+    """
+    logger.info("--- %s ---", spec["description"])
+    pair = find_duplicate_pair(
+        session,
+        spec["roast_date"],
+        spec["name_hint"],
+        spec["roaster_hint"],
+    )
+    if pair is None:
+        return
+
+    keeper, duplicate = pair
+    logger.info(
+        "  KEEPER:    id=%s  '%s' / '%s'", keeper.id, keeper.roaster, keeper.name
+    )
+    logger.info(
+        "  DUPLICATE: id=%s  '%s' / '%s'",
+        duplicate.id,
+        duplicate.roaster,
+        duplicate.name,
+    )
+
+    shot_count = session.query(Shot).filter(Shot.coffee_id == duplicate.id).count()
+    logger.info("  Shots referencing duplicate: %s", shot_count)
+    logger.info(
+        "  Will: UPDATE shots SET coffee_id=%s WHERE coffee_id=%s",
+        keeper.id,
+        duplicate.id,
+    )
+    logger.info("  Will: DELETE coffees WHERE id=%s", duplicate.id)
+
+    if not dry_run:
+        session.query(Shot).filter(Shot.coffee_id == duplicate.id).update(
+            {"coffee_id": keeper.id}
+        )
+        session.delete(duplicate)
+        logger.info("  Done.")
 
 
 def main() -> None:
@@ -124,60 +185,30 @@ def main() -> None:
     args = parser.parse_args()
     dry_run = not args.apply
 
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
     config = load_config()
     init_db(config.database.get_url(), pool_size=1)
     session = get_session()
 
     if dry_run:
-        print(
-            "=== DRY RUN — no changes will be written. Pass --apply to execute. ===\n"
+        logger.info(
+            "=== DRY RUN — no changes will be written. Pass --apply to execute. ==="
         )
     else:
-        print("=== APPLY MODE — changes will be committed. ===\n")
+        logger.info("=== APPLY MODE — changes will be committed. ===")
 
     try:
         for spec in DUPLICATE_SPECS:
-            print(f"--- {spec['description']} ---")
-            pair = find_duplicate_pair(
-                session,
-                spec["roast_date"],
-                spec["name_hint"],
-                spec["roaster_hint"],
-            )
-            if pair is None:
-                print()
-                continue
-
-            keeper, duplicate = pair
-            print(f"  KEEPER:    id={keeper.id}  '{keeper.roaster}' / '{keeper.name}'")
-            print(
-                f"  DUPLICATE: id={duplicate.id}  '{duplicate.roaster}' / '{duplicate.name}'"
-            )
-
-            shot_count = (
-                session.query(Shot).filter(Shot.coffee_id == duplicate.id).count()
-            )
-            print(f"  Shots referencing duplicate: {shot_count}")
-            print(
-                f"  Will: UPDATE shots SET coffee_id={keeper.id} WHERE coffee_id={duplicate.id}"
-            )
-            print(f"  Will: DELETE coffees WHERE id={duplicate.id}")
-
-            if not dry_run:
-                session.query(Shot).filter(Shot.coffee_id == duplicate.id).update(
-                    {"coffee_id": keeper.id}
-                )
-                session.delete(duplicate)
-                print(f"  Done.")
-            print()
+            repair_spec(session, spec, dry_run)
 
         if not dry_run:
             session.commit()
-            print("All changes committed.")
+            logger.info("All changes committed.")
         else:
-            print("Dry run complete. Re-run with --apply to execute.")
+            logger.info("Dry run complete. Re-run with --apply to execute.")
 
-    except Exception:
+    except (SQLAlchemyError, ValueError):
         session.rollback()
         raise
     finally:

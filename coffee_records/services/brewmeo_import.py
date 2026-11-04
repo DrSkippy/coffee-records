@@ -9,7 +9,6 @@ notes block for unmatched metadata, and Beanconqueror-compatible telemetry.
 
 import csv
 import io
-import json
 import math
 import re
 from collections.abc import Iterator
@@ -305,7 +304,10 @@ def _time_fields(start: datetime, elapsed: float) -> dict[str, str]:
 
 
 def to_telemetry_json(
-    shot: BrewmeoShot, source_file: str, settings: BrewmeoConfig | None = None
+    shot: BrewmeoShot,
+    source_file: str,
+    settings: BrewmeoConfig | None = None,
+    trimmed: tuple[list[Sample], float | None] | None = None,
 ) -> dict[str, Any]:
     """Convert parsed samples to Beanconqueror flow-profile JSON plus metadata.
 
@@ -313,6 +315,9 @@ def to_telemetry_json(
         shot: Parsed CSV.
         source_file: Original upload filename, recorded in the metadata.
         settings: Signal-processing settings (defaults to built-in settings).
+        trimmed: Precomputed ``trim_weight_disturbance`` result, so callers
+            that also inspect the trim do not recompute it. Defaults to
+            trimming internally.
 
     Returns:
         A JSON-serializable dict with the Beanconqueror series keys and a
@@ -320,7 +325,11 @@ def to_telemetry_json(
     """
     shot_date = shot.when("Date")
     start = shot_date or _FALLBACK_START
-    weight, trimmed_from = trim_weight_disturbance(shot.weight, settings)
+    weight, trimmed_from = (
+        trimmed
+        if trimmed is not None
+        else trim_weight_disturbance(shot.weight, settings)
+    )
 
     weight_entries = [
         {
@@ -511,6 +520,90 @@ def _safe_filename(name: str | None) -> str:
     return f"{slug or 'brewmeo-shot'}.json"
 
 
+def _match_equipment(
+    session: Session,
+    label: str,
+    model_cls: type[Grinder] | type[BrewingDevice],
+    matching: MatchingConfig,
+) -> int | None:
+    """Fuzzy-match an equipment label against a table of grinders or machines.
+
+    Args:
+        session: Read-only database session.
+        label: Joined brand/name/model text from the CSV.
+        model_cls: Model class whose rows are matched against.
+        matching: Fuzzy-match thresholds.
+
+    Returns:
+        The best-matching equipment id, or None when nothing overlaps.
+    """
+    rows: list[Grinder | BrewingDevice] = list(session.query(model_cls))
+    return best_equipment_match(
+        label,
+        ((item.id, f"{item.make} {item.model}") for item in rows),
+        min_overlap=matching.equipment_min_overlap,
+    )
+
+
+def _weight_trace_warnings(
+    shot: BrewmeoShot, settings: BrewmeoConfig
+) -> tuple[list[str], list[Sample], float | None]:
+    """Trim the weight trace and report disturbance and final-weight issues.
+
+    Args:
+        shot: Parsed CSV.
+        settings: Disturbance and tolerance thresholds.
+
+    Returns:
+        ``(warnings, kept samples, trim start time or None)``.
+    """
+    warnings: list[str] = []
+    final_weight = shot.positive("Weight")
+    kept, trimmed_from = trim_weight_disturbance(shot.weight, settings)
+    if trimmed_from is not None:
+        warnings.append(
+            f"Scale disturbance at {trimmed_from:.1f} s removed from the weight trace"
+        )
+    if kept and final_weight is not None:
+        trace_final = kept[-1][1]
+        if abs(final_weight - trace_final) > settings.final_weight_tolerance_grams:
+            warnings.append(
+                f"CSV final weight {final_weight:.1f} g disagrees with the scale "
+                f"trace ({trace_final:.1f} g at the end of the shot); check Final Weight"
+            )
+    return warnings, kept, trimmed_from
+
+
+def _telemetry_and_phases(
+    shot: BrewmeoShot,
+    source_file: str,
+    brewmeo: BrewmeoConfig,
+    trimmed: tuple[list[Sample], float | None],
+    phase_settings: TelemetryPhasesConfig | None,
+) -> tuple[dict[str, Any] | None, TelemetryPhases | None, list[str]]:
+    """Build telemetry JSON and estimate phases from it.
+
+    Args:
+        shot: Parsed CSV.
+        source_file: Original upload filename.
+        brewmeo: Signal-processing settings.
+        trimmed: Precomputed weight-trim result.
+        phase_settings: Phase-estimate calibration.
+
+    Returns:
+        ``(telemetry JSON or None, phases or None, warnings)``; telemetry is
+        None when the trace yields no usable chart data.
+    """
+    warnings: list[str] = []
+    telemetry = to_telemetry_json(shot, source_file, brewmeo, trimmed)
+    try:
+        series = extract_thumbnail_series(telemetry)
+    except TelemetryValidationError as exc:
+        warnings.append(f"No telemetry attached: {exc}")
+        return None, None, warnings
+    return telemetry, estimate_phases(series, phase_settings), warnings
+
+
 def build_import(
     session: Session,
     shot: BrewmeoShot,
@@ -547,50 +640,27 @@ def build_import(
     warnings.extend(coffee_warnings)
 
     grinder_label = _equipment_label(shot, _GRINDER_LABELS)
-    grinder_id = best_equipment_match(
-        grinder_label,
-        ((g.id, f"{g.make} {g.model}") for g in session.query(Grinder).all()),
-        min_overlap=matching.equipment_min_overlap,
-    )
+    grinder_id = _match_equipment(session, grinder_label, Grinder, matching)
     if grinder_id is not None:
         consumed.update(_GRINDER_LABELS)
     elif grinder_label:
         warnings.append(f"Grinder '{grinder_label}' not found; left unselected")
 
     machine_label = _equipment_label(shot, _MACHINE_LABELS)
-    device_id = best_equipment_match(
-        machine_label,
-        ((d.id, f"{d.make} {d.model}") for d in session.query(BrewingDevice).all()),
-        min_overlap=matching.equipment_min_overlap,
-    )
+    device_id = _match_equipment(session, machine_label, BrewingDevice, matching)
     if device_id is not None:
         consumed.update(_MACHINE_LABELS)
     elif machine_label:
         warnings.append(f"Machine '{machine_label}' not found; left unselected")
 
+    weight_warnings, kept, trimmed_from = _weight_trace_warnings(shot, brewmeo)
+    warnings.extend(weight_warnings)
     final_weight = shot.positive("Weight")
-    kept, trimmed_from = trim_weight_disturbance(shot.weight, brewmeo)
-    if trimmed_from is not None:
-        warnings.append(
-            f"Scale disturbance at {trimmed_from:.1f} s removed from the weight trace"
-        )
-    if kept and final_weight is not None:
-        trace_final = kept[-1][1]
-        if abs(final_weight - trace_final) > brewmeo.final_weight_tolerance_grams:
-            warnings.append(
-                f"CSV final weight {final_weight:.1f} g disagrees with the scale "
-                f"trace ({trace_final:.1f} g at the end of the shot); check Final Weight"
-            )
 
-    telemetry: dict[str, Any] | None = to_telemetry_json(shot, source_file, brewmeo)
-    phases: TelemetryPhases | None = None
-    try:
-        series = extract_thumbnail_series(json.dumps(telemetry).encode())
-    except TelemetryValidationError as exc:
-        warnings.append(f"No telemetry attached: {exc}")
-        telemetry = None
-    else:
-        phases = estimate_phases(series, phase_settings)
+    telemetry, phases, telemetry_warnings = _telemetry_and_phases(
+        shot, source_file, brewmeo, (kept, trimmed_from), phase_settings
+    )
+    warnings.extend(telemetry_warnings)
 
     notes = compose_notes(shot, consumed)
     if phases is not None:

@@ -4,11 +4,12 @@ from http import HTTPStatus
 
 from flask import Blueprint, jsonify, request
 from flask.typing import ResponseReturnValue
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
 from coffee_records.blueprints.helpers import (
+    delete_stored_file,
     apply_updates,
+    clear_media,
     get_config,
     get_or_404,
     get_storage,
@@ -16,6 +17,7 @@ from coffee_records.blueprints.helpers import (
     query_int,
     require_query_int,
     require_upload,
+    replace_media,
 )
 from coffee_records.database import get_session
 from coffee_records.errors import NotFoundError, UnprocessableError
@@ -303,9 +305,9 @@ def delete_shot(shot_id: int) -> ResponseReturnValue:
         session.commit()
     storage = get_storage()
     if video:
-        storage.delete(video)
+        delete_stored_file(video, storage.delete)
     if telemetry:
-        storage.delete_telemetry(telemetry)
+        delete_stored_file(telemetry, storage.delete_telemetry)
     return "", HTTPStatus.NO_CONTENT
 
 
@@ -323,18 +325,10 @@ def upload_shot_video(shot_id: int) -> ResponseReturnValue:
     storage = get_storage()
     with get_session() as session:
         shot = get_or_404(session, Shot, shot_id, "Shot")
-        previous = shot.video_filename
         new_filename = storage.save_upload(
             upload, VIDEO_EXTENSIONS, DEFAULT_VIDEO_EXTENSION
         )
-        shot.video_filename = new_filename
-        try:
-            session.commit()
-        except SQLAlchemyError:
-            storage.delete(new_filename)
-            raise
-        if previous:
-            storage.delete(previous)
+        replace_media(session, shot, "video_filename", new_filename, storage.delete)
         return _shot_response(session, shot_id)
 
 
@@ -350,11 +344,7 @@ def delete_shot_video(shot_id: int) -> ResponseReturnValue:
     """
     with get_session() as session:
         shot = get_or_404(session, Shot, shot_id, "Shot")
-        previous = shot.video_filename
-        if previous:
-            shot.video_filename = None
-            session.commit()
-            get_storage().delete(previous)
+        clear_media(session, shot, "video_filename", get_storage().delete)
         return _shot_response(session, shot_id)
 
 
@@ -377,16 +367,10 @@ def upload_shot_telemetry(shot_id: int) -> ResponseReturnValue:
     storage = get_storage()
     with get_session() as session:
         shot = get_or_404(session, Shot, shot_id, "Shot")
-        previous = shot.telemetry_filename
         new_filename = storage.save_telemetry(payload, thumbnail)
-        shot.telemetry_filename = new_filename
-        try:
-            session.commit()
-        except SQLAlchemyError:
-            storage.delete_telemetry(new_filename)
-            raise
-        if previous:
-            storage.delete_telemetry(previous)
+        replace_media(
+            session, shot, "telemetry_filename", new_filename, storage.delete_telemetry
+        )
         return _shot_response(session, shot_id)
 
 
@@ -429,9 +413,5 @@ def delete_shot_telemetry(shot_id: int) -> ResponseReturnValue:
     """
     with get_session() as session:
         shot = get_or_404(session, Shot, shot_id, "Shot")
-        previous = shot.telemetry_filename
-        if previous:
-            shot.telemetry_filename = None
-            session.commit()
-            get_storage().delete_telemetry(previous)
+        clear_media(session, shot, "telemetry_filename", get_storage().delete_telemetry)
         return _shot_response(session, shot_id)

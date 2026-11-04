@@ -98,11 +98,15 @@ def _series(raw: Mapping[str, Any], key: str, value_fields: tuple[str, ...]) -> 
     return points
 
 
-def extract_thumbnail_series(payload: bytes) -> dict[str, Series]:
-    """Validate JSON and return its non-empty, non-zero chart series.
+def extract_thumbnail_series(
+    payload: bytes | Mapping[str, Any],
+) -> dict[str, Series]:
+    """Validate telemetry and return its non-empty, non-zero chart series.
 
     Args:
-        payload: Raw telemetry file contents.
+        payload: Raw telemetry file contents, or the already-parsed JSON
+            object (skips the serialize/parse round-trip for in-memory
+            producers).
 
     Returns:
         Series name ("weight", "flow", "pressure") to points.
@@ -110,10 +114,13 @@ def extract_thumbnail_series(payload: bytes) -> dict[str, Series]:
     Raises:
         TelemetryValidationError: If the JSON is invalid or has no usable data.
     """
-    try:
-        raw = json.loads(payload)
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TelemetryValidationError("Telemetry must be valid JSON") from exc
+    if isinstance(payload, Mapping):
+        raw = payload
+    else:
+        try:
+            raw = json.loads(payload)
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise TelemetryValidationError("Telemetry must be valid JSON") from exc
     if not isinstance(raw, Mapping):
         raise TelemetryValidationError("Telemetry JSON must contain an object")
 

@@ -15,7 +15,6 @@ import argparse
 import csv
 import json
 import logging
-import os
 import statistics
 import sys
 from dataclasses import dataclass
@@ -28,7 +27,10 @@ from matplotlib.figure import Figure
 from sqlalchemy import create_engine, text
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 import phase_fit as pf  # noqa: E402
+
+from coffee_records.config import load_config  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 logger = logging.getLogger("telemetry_phases")
@@ -56,11 +58,7 @@ class ShotRow:
 
 def load_shots() -> list[ShotRow]:
     """Read every shot with telemetry from the application database."""
-    url = (
-        f"postgresql+psycopg2://{os.environ['POSTGRES_USER']}:"
-        f"{os.environ['POSTGRES_PASSWORD']}@{os.environ['POSTGRES_HOST']}:"
-        f"{os.environ.get('POSTGRES_PORT', '5434')}/{os.environ['POSTGRES_DATABASE']}"
-    )
+    url = load_config().database.get_url()
     query = text(
         "select id, date, maker, pre_infusion_time, extraction_time, flow_taper,"
         " drink_type, telemetry_filename from shots"

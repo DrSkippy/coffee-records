@@ -10,7 +10,8 @@ first character with "0". Position (1-based) is the primary signal; letters are
 logged as secondary confirmation.
 
 Sheet-specific settings (year, machine cutover date, brewer initials,
-equipment keywords) live in ocr_import.yaml.
+equipment keywords) live in ocr_import.yaml; the file is required — the
+import exits if it is missing or incomplete.
 
 Usage:
     poetry run python bin/import_ocr_data.py --dry-run --verbose
@@ -30,7 +31,8 @@ from difflib import SequenceMatcher
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -68,35 +70,46 @@ GRINDER_KEYS = (EquipmentKey.mazzer, EquipmentKey.baratza)
 DEVICE_KEYS = (EquipmentKey.breville, EquipmentKey.ecm)
 
 
-class OcrImportSettings(BaseModel):
-    """Sheet-specific import settings loaded from ocr_import.yaml."""
+class OcrImportSettingsError(Exception):
+    """Import settings are missing or invalid (see ocr_import.yaml)."""
 
-    year: int = 2026
-    machine_cutover: date = date(2026, 2, 19)
+
+class OcrImportSettings(BaseModel):
+    """Sheet-specific import settings loaded from ocr_import.yaml.
+
+    Fields describing the log sheets (year, cutover, brewers, equipment
+    keywords) are required: importing against guessed facts is worse than
+    failing to start.
+    """
+
+    year: int
+    machine_cutover: date
     drink_weight_grams: tuple[int, int] = (40, 500)
     unknown_maker: str = "Unknown"
-    brewers: dict[str, str] = {"sc": "Scott", "sa": "Sara", "ot": "Other"}
-    equipment_keywords: dict[EquipmentKey, list[str]] = {
-        EquipmentKey.mazzer: ["mazzer"],
-        EquipmentKey.baratza: ["baratza"],
-        EquipmentKey.breville: ["breville"],
-        EquipmentKey.ecm: ["ecm", "synchronika"],
-    }
+    brewers: dict[str, str]
+    equipment_keywords: dict[EquipmentKey, list[str]]
 
 
 def load_settings(path: Path) -> OcrImportSettings:
-    """Load import settings from YAML (defaults when the file is absent).
+    """Load import settings from YAML (fails if the file is absent).
 
     Args:
         path: Settings file.
 
     Returns:
         Validated settings.
+
+    Raises:
+        OcrImportSettingsError: If the settings file is missing or empty.
     """
     if not path.exists():
-        return OcrImportSettings()
+        raise OcrImportSettingsError(f"settings file not found: {path}")
     with path.open() as f:
-        return OcrImportSettings.model_validate(yaml.safe_load(f) or {})
+        raw = yaml.safe_load(f) or {}
+    try:
+        return OcrImportSettings.model_validate(raw)
+    except ValidationError as exc:
+        raise OcrImportSettingsError(f"invalid settings in {path}") from exc
 
 
 @dataclass
@@ -1055,7 +1068,11 @@ def main() -> None:
         format="%(levelname)-8s %(message)s",
     )
 
-    settings = load_settings(args.settings)
+    try:
+        settings = load_settings(args.settings)
+    except OcrImportSettingsError:
+        logger.exception("Cannot start import — fix ocr_import.yaml first")
+        sys.exit(1)
     if args.year is not None:
         settings = settings.model_copy(update={"year": args.year})
 
@@ -1087,7 +1104,7 @@ def main() -> None:
             settings=settings,
             matching=config.matching,
         )
-    except Exception:
+    except (SQLAlchemyError, OSError, ValueError):
         session.rollback()
         logger.exception(
             "Import failed%s", "" if args.dry_run else " — all changes rolled back"

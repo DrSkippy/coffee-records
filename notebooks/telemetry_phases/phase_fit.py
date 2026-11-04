@@ -1,8 +1,12 @@
 """Estimate espresso shot phase boundaries from telemetry by curve fitting.
 
-Exploration code (not used by the application). Each boundary is the
-intersection of two ideal curve segments fitted to the signal around a
-transition:
+Exploration code (not used by the application); it keeps full two-segment
+fits (coefficients and predictions) for plotting, which the production
+implementation deliberately drops. The production counterpart is
+``coffee_records/services/telemetry_phases.py`` — that module is canonical
+and config-driven; change it there first and only port exploration extras
+here. Each boundary is the intersection of two ideal curve segments fitted
+to the signal around a transition:
 
 * ``t_pump_on``  — pressure leaves its zero baseline (flat line ∩ rising line).
 * ``t_ramp``     — pressure leaves the low pre-infusion plateau and ramps to

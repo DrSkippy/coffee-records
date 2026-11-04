@@ -29,12 +29,14 @@ class GrindModelTraining(Base):
     converged: Mapped[bool] = mapped_column(Boolean, nullable=False)
     r_squared: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    # Global model coefficients
-    a0: Mapped[float] = mapped_column(Float, nullable=False)  # temp - 65
+    # Global model coefficients (features centered on grind_model config references)
+    a0: Mapped[float] = mapped_column(Float, nullable=False)  # temp - reference_temp_f
     a2: Mapped[float] = mapped_column(Float, nullable=False)  # extraction_time - target
-    a3: Mapped[float] = mapped_column(Float, nullable=False)  # dose - 20
+    a3: Mapped[float] = mapped_column(Float, nullable=False)  # dose - reference_dose_g
     a4: Mapped[float] = mapped_column(Float, nullable=False)  # age_days
-    a5: Mapped[float] = mapped_column(Float, nullable=False)  # yield - 2*dose
+    a5: Mapped[float] = mapped_column(
+        Float, nullable=False
+    )  # yield - target_brew_ratio * dose
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

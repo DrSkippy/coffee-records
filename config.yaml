@@ -26,6 +26,9 @@ grind_model:
   target_brew_ratio: 2.0      # yield feature = final_weight - ratio * dose
   min_within_coffee_range: 0.5  # features varying less than this within every coffee get coefficient 0
   min_points: 3               # minimum usable shots to fit a regression/model
+  stored_decimals: 8          # decimals kept when persisting model coefficients
+  point_decimals: 4           # decimals for per-shot data points in reports
+  coefficient_decimals: 6    # decimals for regression coefficients in reports
   espresso_drink_types: [americano, latte, cappuccino]
 grinders:
   dual_scale_keywords: ["mazzer"]           # "8+7 1/2" notation
@@ -54,6 +57,21 @@ telemetry_phases:            # pre-infusion / shot time estimation (notebooks/te
   pump_on_offset_s: 2.65      # pump-on lead for recordings that auto-start pressurised
   profile_end_ratio: 0.65     # plateau ending below this fraction of peak = profiled
   profile_rmse_bar: 0.15      # plateau deviating more than this from a smooth decline = profiled
+  pump_on_reach: 0.7          # pump-on fit window ends at this fraction of the pre-infusion plateau
+  ramp_reach: 0.6             # ramp fit window ends at this fraction of peak pressure
+  peak_reach: 0.9             # brew plateau starts at this fraction of peak pressure
+  peak_percentile: 95         # percentile of pressure samples used as "peak"
+  low_peak_bar: 6.0           # peak below this flags a low-pressure shot
+  flow_before_ramp_s: 1.0     # flow starting this far before the ramp is an issue
+  min_pressure_samples: 20    # fewer pressure samples = no usable telemetry
+  pump_off_tail_s: 0.3       # seconds past the first zero sample included in the pump-off fit
+  ramp_fit_start_s: 0.5       # ramp fit window starts this far after pump on
+  plateau_floor_bar: 1.0     # assumed pre-infusion plateau when no early samples exist
+  profile_start_margin_s: 1.0 # profile fit grid starts this far after the peak crossing
+  profile_end_margin_s: 0.5   # profile fit grid ends this far before pump off
+  profile_grid_step_s: 0.1   # profile fit grid resolution
+  profile_min_samples: 20    # profile fit needs at least this many grid points
+  profile_end_samples: 10    # plateau end ratio = median of this many final grid points
 shot_defaults_seed:
   maker: "Scott"
   dose_weight: 20.0

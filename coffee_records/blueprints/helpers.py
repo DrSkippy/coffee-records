@@ -1,5 +1,7 @@
 """Helpers shared by the API blueprints: config access, lookups, uploads, params."""
 
+import logging
+from collections.abc import Callable
 from datetime import date
 from http import HTTPStatus
 from typing import Any, TypeVar, cast
@@ -7,6 +9,7 @@ from typing import Any, TypeVar, cast
 from flask import current_app, jsonify, request
 from flask.typing import ResponseReturnValue
 from pydantic import BaseModel
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import InstrumentedAttribute, Session
 from werkzeug.datastructures import FileStorage
 
@@ -16,7 +19,10 @@ from coffee_records.errors import BadRequestError, ConflictError, NotFoundError
 from coffee_records.models.shot import Shot
 from coffee_records.services.storage import MediaStorage
 
+logger = logging.getLogger(__name__)
+
 ModelT = TypeVar("ModelT", bound=Base)
+DeleteFn = Callable[[str], None]
 
 
 def get_config() -> Config:
@@ -179,3 +185,86 @@ def query_date(name: str) -> date | None:
         return date.fromisoformat(raw)
     except ValueError:
         raise BadRequestError(f"{name} must be an ISO date (YYYY-MM-DD)") from None
+
+
+def delete_stored_file(filename: str, delete_fn: DeleteFn) -> None:
+    """Delete a stored media file after a successful commit, logging failures.
+
+    The owning database row is already committed at this point, so a file
+    deletion failure must not turn a successful request into a 500.
+
+    Args:
+        filename: Stored filename to remove.
+        delete_fn: Storage deletion callable (e.g. ``MediaStorage.delete``).
+    """
+    try:
+        delete_fn(filename)
+    except OSError:
+        logger.warning(
+            "Stored media file %r could not be deleted; orphaned on disk",
+            filename,
+            exc_info=True,
+        )
+
+
+def replace_media(
+    session: Session,
+    instance: Base,
+    attr: str,
+    new_filename: str,
+    delete_fn: DeleteFn,
+) -> None:
+    """Point a media attribute at a newly stored file and commit.
+
+    The new file is removed again if the commit fails, so the row never
+    references an untracked file; after a successful commit the replaced
+    file is deleted (failures logged, never raised).
+
+    Args:
+        session: Active session to commit through.
+        instance: ORM instance owning the media column.
+        attr: Media filename attribute (e.g. ``"video_filename"``).
+        new_filename: Newly stored filename to reference.
+        delete_fn: Storage deletion callable for this media kind.
+
+    Raises:
+        SQLAlchemyError: If the commit fails (the new file is removed).
+    """
+    previous = cast("str | None", getattr(instance, attr))
+    setattr(instance, attr, new_filename)
+    try:
+        session.commit()
+    except SQLAlchemyError:
+        delete_fn(new_filename)
+        raise
+    if previous:
+        delete_stored_file(previous, delete_fn)
+
+
+def clear_media(
+    session: Session, instance: Base, attr: str, delete_fn: DeleteFn
+) -> bool:
+    """Clear a media attribute and delete the file it referenced.
+
+    Nothing happens when the attribute is already empty. The deletion
+    happens after the commit; failures are logged, never raised.
+
+    Args:
+        session: Active session to commit through.
+        instance: ORM instance owning the media column.
+        attr: Media filename attribute (e.g. ``"image_filename"``).
+        delete_fn: Storage deletion callable for this media kind.
+
+    Returns:
+        True when a file was cleared, False when the attribute was empty.
+
+    Raises:
+        SQLAlchemyError: If the commit fails.
+    """
+    previous = cast("str | None", getattr(instance, attr))
+    if not previous:
+        return False
+    setattr(instance, attr, None)
+    session.commit()
+    delete_stored_file(previous, delete_fn)
+    return True

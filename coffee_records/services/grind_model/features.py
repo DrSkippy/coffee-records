@@ -42,6 +42,22 @@ class FeatureRow:
         return self.features[0]
 
 
+def temp_offset(grinder_temp_before: float, params: GrindModelConfig) -> float:
+    """Center a grinder temperature on the configured reference temperature.
+
+    Single source of truth for the temperature-offset feature shared by
+    grind-model training and the regression report.
+
+    Args:
+        grinder_temp_before: Recorded grinder temperature (°F).
+        params: Calibration supplying ``reference_temp_f``.
+
+    Returns:
+        The temperature offset from the reference.
+    """
+    return float(grinder_temp_before) - params.reference_temp_f
+
+
 def load_eligible_shots(
     session: Session,
     grinder_id: int,
@@ -153,7 +169,7 @@ def build_feature_rows(
                 age_days=age_days,
                 grind=grind,
                 features=(
-                    float(temp) - params.reference_temp_f,
+                    temp_offset(temp, params),
                     float(extraction_time) - target_time,
                     float(dose) - params.reference_dose_g,
                     float(age_days),

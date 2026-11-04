@@ -89,7 +89,9 @@ def test_parse_csv_fixtures() -> None:
     assert coffees[0].roast_date == date(2026, 1, 26)
     assert coffees[2].roast_date is None
 
-    shots = ocr.parse_shots(OCR_FIXTURES / "coffee_shots.csv", ocr.OcrImportSettings())
+    shots = ocr.parse_shots(
+        OCR_FIXTURES / "coffee_shots.csv", ocr.load_settings(ocr.DEFAULT_SETTINGS_PATH)
+    )
     assert [s.row for s in shots] == [2, 3, 4]
     first, second, third = shots
     assert first.maker == "Scott"
@@ -103,10 +105,18 @@ def test_parse_csv_fixtures() -> None:
 
 
 def test_load_settings(tmp_path: Path) -> None:
-    """Settings load from YAML, with defaults when the file is absent."""
-    assert ocr.load_settings(tmp_path / "missing.yaml").year == 2026
+    """A missing or incomplete settings file fails loudly instead of guessing."""
+    with pytest.raises(ocr.OcrImportSettingsError):
+        ocr.load_settings(tmp_path / "missing.yaml")
     path = tmp_path / "s.yaml"
     path.write_text("year: 2025\nbrewers: {xx: Pat}\n")
+    with pytest.raises(ocr.OcrImportSettingsError):
+        ocr.load_settings(path)  # machine_cutover and keywords are required
+    path.write_text(
+        "year: 2025\nmachine_cutover: 2025-03-01\nbrewers: {xx: Pat}\n"
+        "equipment_keywords: {mazzer: [mazzer], baratza: [baratza],"
+        " breville: [breville], ecm: [ecm]}\n"
+    )
     settings = ocr.load_settings(path)
     assert settings.year == 2025
     assert settings.brewers == {"xx": "Pat"}
@@ -145,7 +155,7 @@ def test_import_dry_run_then_apply(
     app: Flask, caplog: pytest.LogCaptureFixture
 ) -> None:
     """Dry run writes nothing; apply inserts new coffees and all shots."""
-    settings = ocr.OcrImportSettings()
+    settings = ocr.load_settings(ocr.DEFAULT_SETTINGS_PATH)
     coffees = ocr.parse_coffees(OCR_FIXTURES / "coffee_roasters.csv", 2026)
     shots = ocr.parse_shots(OCR_FIXTURES / "coffee_shots.csv", settings)
     with app.app_context():
@@ -203,7 +213,7 @@ def test_import_main_logs_failure(
     """Failures are logged (even in dry-run mode) and exit non-zero."""
 
     def explode(*args: Any, **kwargs: Any) -> None:
-        raise RuntimeError("boom")
+        raise ValueError("boom")
 
     monkeypatch.setattr(ocr, "init_db", lambda *args, **kwargs: None)
     monkeypatch.setattr(ocr, "import_data", explode)
@@ -251,6 +261,11 @@ def test_edit_telemetry_helpers() -> None:
     assert edit_telemetry.boxcar_smooth([0.0, 3.0, 6.0, 0.0], 3) == [0.0, 3.0, 3.0, 0.0]
     edit_telemetry.apply_smooth(trimmed, "value", 3)
     assert trimmed[1]["value"] == pytest.approx((-2.0 + 6.0 + 3.0) / 3)
+
+    with pytest.raises(ValueError):
+        edit_telemetry.boxcar_smooth(
+            [1.0, 2.0, 3.0, 4.0], 4
+        )  # even windows are rejected
 
     edit_telemetry.clamp_all_fields(trimmed)
     assert trimmed[0]["value"] == 0
@@ -339,7 +354,7 @@ def test_backfill_thumbnails(app: Flask, client: FlaskClient, tmp_path: Path) ->
         assert backfill_telemetry_thumbnails.backfill(config, force=True) == (2, 0, 1)
 
 
-def test_find_duplicate_pair(app: Flask, capsys: pytest.CaptureFixture[str]) -> None:
+def test_find_duplicate_pair(app: Flask, caplog: pytest.LogCaptureFixture) -> None:
     """Duplicate clusters resolve to (keeper, duplicate) only when exactly two match."""
     roast = date(2026, 1, 26)
     with app.app_context():
@@ -372,7 +387,7 @@ def test_find_duplicate_pair(app: Flask, capsys: pytest.CaptureFixture[str]) -> 
                 )
                 is None
             )
-    output = capsys.readouterr().out
+    output = caplog.text
     assert (
         "NOT FOUND" in output
         and "ALREADY CLEAN" in output

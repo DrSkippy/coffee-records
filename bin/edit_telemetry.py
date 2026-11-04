@@ -100,11 +100,25 @@ def trim_series(
 
 
 def boxcar_smooth(values: list[float], window: int) -> list[float]:
-    """Replace interior values with a centered boxcar average; leave edges unchanged."""
+    """Replace interior values with a centered boxcar average; leave edges unchanged.
+
+    Args:
+        values: Samples to smooth.
+        window: Averaging window width in samples (must be odd).
+
+    Returns:
+        Smoothed copy; edge samples (half a window at each end) are unchanged.
+
+    Raises:
+        ValueError: If ``window`` is even or shorter than 3.
+    """
+    if window < 3 or window % 2 == 0:
+        raise ValueError(f"smoothing window must be odd and >= 3, got {window}")
     half = window // 2
+    width = 2 * half + 1
     result = values.copy()
     for i in range(half, len(values) - half):
-        result[i] = sum(values[i - half : i + half + 1]) / window
+        result[i] = sum(values[i - half : i + half + 1]) / width
     return result
 
 
@@ -116,12 +130,22 @@ def apply_smooth(series: list[dict[str, Any]], field: str, window: int) -> None:
         item[field] = v
 
 
-def clamp_all_fields(series: list[dict[str, Any]]) -> None:
-    """Replace any negative numeric value in every field (except brew_time/timestamp) with 0."""
+def clamp_all_fields(series: list[dict[str, Any]]) -> bool:
+    """Replace negative numeric values (except brew_time/timestamp) with 0.
+
+    Args:
+        series: Samples to clamp in place.
+
+    Returns:
+        True when any value was changed, False otherwise.
+    """
+    changed = False
     for item in series:
         for key, val in item.items():
             if key not in _BREW_TIME_KEYS and isinstance(val, (int, float)) and val < 0:
                 item[key] = 0
+                changed = True
+    return changed
 
 
 def plot_data(
@@ -243,69 +267,107 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def load_data(path: Path) -> dict[str, list[dict[str, Any]]]:
+    """Read a Beanconqueror flow-profile JSON, sorting each series by brew_time.
+
+    Beanconqueror writes series in order, but the S.T format means float()
+    comparisons are unreliable; sort defensively.
+
+    Args:
+        path: Telemetry JSON file.
+
+    Returns:
+        Parsed series keyed by series name.
+    """
+    data: dict[str, list[dict[str, Any]]] = json.loads(path.read_text())
+    for key in ALL_SERIES_KEYS:
+        if data.get(key):
+            data[key].sort(key=get_brew_time)
+    return data
+
+
+def _trim(data: dict[str, list[dict[str, Any]]], args: argparse.Namespace) -> None:
+    """Trim every series to the requested brew-time window and renumber from 0."""
+    all_times: list[float] = []
+    for key in ALL_SERIES_KEYS:
+        if data.get(key):
+            all_times.extend(get_brew_time(item) for item in data[key])
+
+    start: float = args.start_time if args.start_time is not None else min(all_times)
+    end: float = args.end_time if args.end_time is not None else max(all_times)
+
+    for key in ALL_SERIES_KEYS:
+        if data.get(key):
+            data[key] = trim_series(data[key], start, end)
+    logger.info("Trimmed to brew_time [%.2f, %.2f] and renumbered from 0", start, end)
+
+
+def _smooth(
+    data: dict[str, list[dict[str, Any]]],
+    smooth_targets: list[tuple[int | None, str, str]],
+) -> None:
+    """Smooth the requested series fields with their boxcar windows.
+
+    Args:
+        data: Parsed series keyed by series name.
+        smooth_targets: ``(window, series key, value field)`` triples.
+    """
+    for window, key, field in smooth_targets:
+        if window is not None and data.get(key):
+            apply_smooth(data[key], field, window)
+            logger.info("Smoothed %s.%s with window=%d", key, field, window)
+
+
+def apply_edits(
+    data: dict[str, list[dict[str, Any]]], args: argparse.Namespace
+) -> bool:
+    """Apply the requested trim, smoothing and clamping edits in place.
+
+    Args:
+        data: Parsed series keyed by series name.
+        args: Parsed CLI arguments.
+
+    Returns:
+        True when an edit changed the data (so an edited chart is shown).
+    """
+    smooth_targets: list[tuple[int | None, str, str]] = [
+        (args.weight, "weight", "actual_weight"),
+        (args.flow, "realtimeFlow", "flow_value"),
+        (args.pressure, "pressureFlow", "actual_pressure"),
+    ]
+    edited = False
+    if args.start_time is not None or args.end_time is not None:
+        _trim(data, args)
+        edited = True
+    if any(window is not None for window, _, _ in smooth_targets):
+        _smooth(data, smooth_targets)
+        edited = True
+    for key in ALL_SERIES_KEYS:
+        if data.get(key) and clamp_all_fields(data[key]):
+            edited = True
+    return edited
+
+
 def main() -> None:
-    """Entry point."""
+    """Entry point: load, chart, edit, save and re-chart a telemetry file."""
     parser = build_parser()
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
     input_path: Path = args.input_file
-    data: dict[str, list[dict[str, Any]]] = json.loads(input_path.read_text())
-
-    # Sort all series by brew_time (Beanconqueror writes them in order but the
-    # S.T format means float() comparisons are unreliable; sort defensively).
-    for key in ALL_SERIES_KEYS:
-        if data.get(key):
-            data[key].sort(key=get_brew_time)
+    data = load_data(input_path)
 
     # Step 1: show initial chart
     plot_data(data, f"Initial: {input_path.name}")
 
-    edited = False
-
-    # Step 2: trim
-    if args.start_time is not None or args.end_time is not None:
-        all_times: list[float] = []
-        for key in ALL_SERIES_KEYS:
-            if data.get(key):
-                all_times.extend(get_brew_time(item) for item in data[key])
-
-        start: float = (
-            args.start_time if args.start_time is not None else min(all_times)
-        )
-        end: float = args.end_time if args.end_time is not None else max(all_times)
-
-        for key in ALL_SERIES_KEYS:
-            if data.get(key):
-                data[key] = trim_series(data[key], start, end)
-
-        logger.info(
-            "Trimmed to brew_time [%.2f, %.2f] and renumbered from 0", start, end
-        )
-        edited = True
-
-    # Step 3: smooth
-    smooth_targets: list[tuple[int | None, str, str]] = [
-        (args.weight, "weight", "actual_weight"),
-        (args.flow, "realtimeFlow", "flow_value"),
-        (args.pressure, "pressureFlow", "actual_pressure"),
-    ]
-    for window, key, field in smooth_targets:
-        if window is not None and data.get(key):
-            apply_smooth(data[key], field, window)
-            logger.info("Smoothed %s.%s with window=%d", key, field, window)
-            edited = True
-
-    # Step 4: clamp all negative numeric values to zero across every series
-    for key in ALL_SERIES_KEYS:
-        if data.get(key):
-            clamp_all_fields(data[key])
+    # Steps 2-4: apply requested edits
+    edited = apply_edits(data, args)
 
     # Step 5: save
     out_path = make_output_path(input_path, args.shot_id)
     out_path.write_text(json.dumps(data, indent=2))
-    print(str(out_path))
+    logger.info("Wrote %s", out_path)
 
     # Step 6: post-edit chart
     if edited:

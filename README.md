@@ -154,6 +154,8 @@ shot_defaults_seed: { ... }  # initial New Shot form defaults
 
 `bin/import_ocr_data.py` reads its sheet-specific settings (year, machine
 cutover date, brewer initials, equipment keywords) from `ocr_import.yaml`.
+Those fields are required — the import refuses to start if the file is
+missing or incomplete, rather than guessing sheet facts.
 
 ### Environment variables (`.envrc`)
 
@@ -176,7 +178,7 @@ export POSTGRES_DATABASE=coffee-records
 export API_KEY=your-secret-key   # enforces X-API-Key auth on all /api/* routes
 ```
 
-`docker-compose.yml` passes `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_DATABASE`, `API_KEY` and `SECRET_KEY` into the container. The container takes its port from `config.yaml` (5434).
+`docker-compose.yml` passes `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_DATABASE`, `API_KEY` and `SECRET_KEY` into the container. The container's database port comes from `config.yaml` (`database.port`, 5434); the app itself listens on `server.port` (5000) inside the container.
 
 ---
 

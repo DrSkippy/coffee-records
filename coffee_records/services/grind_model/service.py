@@ -39,10 +39,6 @@ from coffee_records.services.reports.target_time import target_shot_times_wma
 
 logger = logging.getLogger(__name__)
 
-# Stored coefficients and intercepts are rounded to this many decimals.
-_STORED_DECIMALS = 8
-# Projected grind values in plotting points are rounded to this many decimals.
-_POINT_DECIMALS = 4
 # The within-coffee estimator is closed-form: one pass, always converged.
 # These fields are kept for compatibility with the earlier iterative fit.
 _N_ITERATIONS = 1
@@ -238,11 +234,11 @@ def fit_grind_model(
         )
 
     coefficients = {
-        name: round(float(value), _STORED_DECIMALS)
+        name: round(float(value), params.stored_decimals)
         for name, value in zip(COEFFICIENT_NAMES, fit.coefficients)
     }
     intercepts = {
-        cid: round(float(fit.intercepts[i]), _STORED_DECIMALS)
+        cid: round(float(fit.intercepts[i]), params.stored_decimals)
         for i, cid in enumerate(unique_coffees)
     }
     training = GrindModelTraining(
@@ -338,7 +334,9 @@ def get_grind_model_params(
 
     # Re-query shots for plotting (all current qualifying shots for coffees in
     # model), with the same profiling filter as training.
-    shots = load_eligible_shots(session, grinder_id, params, coffee_ids=intercepts)
+    shots = load_eligible_shots(
+        session, grinder_id, params, coffee_ids=intercepts.keys()
+    )
     eligible = split_by_profiling(shots).eligible
     coefficients = [float(getattr(training, name)) for name in COEFFICIENT_NAMES]
     points = []
@@ -355,9 +353,9 @@ def get_grind_model_params(
                 date=row.shot.date.isoformat(),
                 age_days=row.age_days,
                 temp_offset=round(row.temp_offset, 2),
-                grind=round(row.grind, _POINT_DECIMALS),
+                grind=round(row.grind, params.point_decimals),
                 grind_str=format_grind_numeric(row.grind, grinders),
-                grind_predicted=round(predicted, _POINT_DECIMALS),
+                grind_predicted=round(predicted, params.point_decimals),
                 grind_predicted_str=format_grind_numeric(predicted, grinders),
             )
         )
